@@ -1,15 +1,20 @@
 package com.pixelpals.backend.model;
+
 import com.pixelpals.backend.enumeration.AuthProvider;
 import com.pixelpals.backend.enumeration.SkillLevel;
-import jakarta.persistence.*;
+import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+
 import java.util.*;
 
-@Entity
+@Document(collection = "users") // MongoDB collection
+@Data
 public class User {
 
     @Id
-    @GeneratedValue
-    private UUID id;
+    private String id; // Mongo usa String (ObjectId) oppure UUID manuale
 
     private String username;
     private String email;
@@ -20,33 +25,19 @@ public class User {
     private double rating;
     private boolean isOnline;
 
-    @Enumerated(EnumType.STRING)
     private AuthProvider authProvider;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<TimeSlot> availability;
+    // Lista di slot orari salvati come sottodocumenti
+    private List<TimeSlot> availability = new ArrayList<>();
 
-    @ManyToMany
-    @JoinTable(
-            name = "user_platform",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "platform_id")
-    )
-    private List<Platform> platforms;
+    // Riferimenti a piattaforme (DBRef = tipo foreign key Mongo)
+    @DBRef
+    private List<Platform> platforms = new ArrayList<>();
 
-    @ManyToMany
-    @JoinTable(
-            name = "user_game",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "game_id")
-    )
-    private List<Game> preferredGames;
+    @DBRef
+    private List<Game> preferredGames = new ArrayList<>();
 
-    @ElementCollection
-    @CollectionTable(name = "user_skill_level", joinColumns = @JoinColumn(name = "user_id"))
-    @MapKeyJoinColumn(name = "game_id")
-    @Column(name = "skill_level")
-    @Enumerated(EnumType.STRING)
-    private Map<Game, SkillLevel> skillLevelMap;
+    // Mappa gioco → skillLevel, convertita in forma semplice
+    private Map<String, SkillLevel> skillLevelMap = new HashMap<>();
 }
 

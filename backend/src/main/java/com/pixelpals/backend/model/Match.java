@@ -1,27 +1,29 @@
 package com.pixelpals.backend.model;
-import com.pixelpals.backend.enumeration.MatchStatus;
-import jakarta.persistence.*;
-import java.time.LocalDateTime;
-import java.util.UUID;
 
-@Entity
+import com.pixelpals.backend.enumeration.MatchStatus;
+import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+
+import java.time.LocalDateTime;
+
+@Data
+@Document(collection = "matches")
 public class Match {
 
     @Id
-    @GeneratedValue
-    private UUID id;
+    private String id;
 
-    @ManyToOne
+    @DBRef
     private User userA;
 
-    @ManyToOne
+    @DBRef
     private User userB;
 
-    @ManyToOne
+    @DBRef
     private Game game;
 
     private LocalDateTime matchedAt;
-
-    @Enumerated(EnumType.STRING)
     private MatchStatus status;
 }

@@ -1,24 +1,28 @@
 package com.pixelpals.backend.model;
-import jakarta.persistence.*;
-import java.time.LocalDateTime;
-import java.util.UUID;
 
-@Entity
+import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+
+import java.time.LocalDateTime;
+
+@Data
+@Document(collection = "messages")
 public class Message {
 
     @Id
-    @GeneratedValue
-    private UUID id;
+    private String id;
 
-    @ManyToOne
+    @DBRef
     private User sender;
 
-    @ManyToOne
+    @DBRef
     private User receiver;
 
     private String content;
     private LocalDateTime sentAt;
 
-    @ManyToOne
+    @DBRef
     private Match match; // può essere null
 }

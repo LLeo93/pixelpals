@@ -1,22 +1,23 @@
 package com.pixelpals.backend.model;
-import jakarta.persistence.*;
+
+import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 
-@Entity
+@Data
+@Document
 public class TimeSlot {
 
     @Id
-    @GeneratedValue
-    private Long id;
+    private String id;
 
-    @Enumerated(EnumType.STRING)
     private DayOfWeek dayOfWeek;
-
     private LocalTime startTime;
     private LocalTime endTime;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    // Mongo: embedded o userId come String
+    private String userId; // se vuoi riferirlo
 }

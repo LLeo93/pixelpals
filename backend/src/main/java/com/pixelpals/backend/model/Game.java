@@ -1,19 +1,19 @@
 package com.pixelpals.backend.model;
-import jakarta.persistence.*;
-import java.util.*;
 
-@Entity
+import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Data
+@Document(collection = "games")
 public class Game {
 
     @Id
-    @GeneratedValue
-    private UUID id;
+    private String id;
 
     private String name;
     private String genre;
     private String imageUrl;
 
-    @ManyToMany(mappedBy = "preferredGames")
-    private List<User> users;
+    // Nessuna relazione inversa (Mongo non gestisce bidirezionale by default)
 }
-
