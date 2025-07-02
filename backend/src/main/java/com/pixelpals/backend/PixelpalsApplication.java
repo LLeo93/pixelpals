@@ -20,27 +20,27 @@ public class PixelpalsApplication {
 		SpringApplication.run(PixelpalsApplication.class, args);
 	}
 
-	@Bean
-	public CommandLineRunner init(UserService userService) {
-		return args -> {
-			User user = new User();
-			user.setUsername("TestUser");
-			user.setEmail("test@pixelpals.com");
-
-			Game game = new Game();
-
-
-			Field nameField = Game.class.getDeclaredField("name");
-			nameField.setAccessible(true);
-			nameField.set(game, "Valorant");
-
-			Map<String, SkillLevel> skillMap = new HashMap<>();
-			skillMap.put(game.getName(), SkillLevel.INTERMEDIATE);
-			user.setSkillLevelMap(skillMap);
-
-			userService.createUser(user);
-			System.out.println("✅ User creato con successo!");
-		};
-	}
+//	@Bean
+//	public CommandLineRunner init(UserService userService) {
+//		return args -> {
+//			User user = new User();
+//			user.setUsername("TestUser");
+//			user.setEmail("test@pixelpals.com");
+//
+//			Game game = new Game();
+//
+//
+//			Field nameField = Game.class.getDeclaredField("name");
+//			nameField.setAccessible(true);
+//			nameField.set(game, "Valorant");
+//
+//			Map<String, SkillLevel> skillMap = new HashMap<>();
+//			skillMap.put(game.getName(), SkillLevel.INTERMEDIATE);
+//			user.setSkillLevelMap(skillMap);
+//
+//			userService.createUser(user);
+//			System.out.println("✅ User creato con successo!");
+//		};
+//	}
 }
 
