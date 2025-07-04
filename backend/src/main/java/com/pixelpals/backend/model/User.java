@@ -17,7 +17,7 @@ import java.util.*;
 public class User implements UserDetails {
 
     @Id
-    private String id; // Mongo usa String (ObjectId) oppure UUID manuale
+    private String id;
 
     private String username;
     private String password;

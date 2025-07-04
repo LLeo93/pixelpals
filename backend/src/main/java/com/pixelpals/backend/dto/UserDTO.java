@@ -1,5 +1,6 @@
 package com.pixelpals.backend.dto;
 
+import com.pixelpals.backend.enumeration.AuthProvider;
 import lombok.Data;
 
 @Data
@@ -11,5 +12,6 @@ public class UserDTO {
     private String bio;
     private int level;
     private double rating;
-    private boolean Online;
+    private boolean online;
+    private AuthProvider authProvider; //
 }

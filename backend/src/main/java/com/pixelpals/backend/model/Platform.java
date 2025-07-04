@@ -14,5 +14,5 @@ public class Platform {
     private String name;
     private String iconUrl;
 
-    // Nessuna relazione inversa
+
 }

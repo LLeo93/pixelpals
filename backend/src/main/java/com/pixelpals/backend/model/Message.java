@@ -24,5 +24,5 @@ public class Message {
     private LocalDateTime sentAt;
 
     @DBRef
-    private Match match; // può essere null
+    private Match match;
 }

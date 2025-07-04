@@ -32,7 +32,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        if (path.equals("/api/auth/login") || path.equals("/api/auth/register") || path.equals("/api/auth/refresh")) {
+        // i path OAuth2 da escludere dal filtro
+        if (path.equals("/api/auth/login") || path.equals("/api/auth/register") || path.equals("/api/auth/refresh")
+                || path.startsWith("/oauth2/authorization") || path.startsWith("/login/oauth2/code/")) {
             filterChain.doFilter(request, response);
             return;
         }

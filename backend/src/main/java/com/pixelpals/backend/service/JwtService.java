@@ -1,4 +1,6 @@
 package com.pixelpals.backend.service;
+
+import com.pixelpals.backend.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -7,6 +9,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -18,8 +21,10 @@ public class JwtService {
 
     @Value("${jwt.secret}")
     private String secretKey;
+
     @Value("${jwt.expiration}")
     private long jwtExpiration;
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -69,5 +74,20 @@ public class JwtService {
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    // --- Metodo aggiunto per generare token da User (non UserDetails) ---
+    public String generateToken(User user) {
+        // Se User implementa UserDetails puoi fare: return generateToken((UserDetails) user);
+        // Altrimenti uso l'email come subject
+        Map<String, Object> claims = new HashMap<>();
+        return Jwts
+                .builder()
+                .setClaims(claims)
+                .setSubject(user.getEmail())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
     }
 }

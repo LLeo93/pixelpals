@@ -18,6 +18,6 @@ public class TimeSlot {
     private LocalTime startTime;
     private LocalTime endTime;
 
-    // Mongo: embedded o userId come String
-    private String userId; // se vuoi riferirlo
+
+    private String userId;
 }

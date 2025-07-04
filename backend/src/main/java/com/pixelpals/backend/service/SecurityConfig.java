@@ -1,4 +1,6 @@
 package com.pixelpals.backend.service;
+import com.pixelpals.backend.oauth2.CustomOAuth2UserService;
+import com.pixelpals.backend.oauth2.OAuth2LoginSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,12 +24,21 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
-
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+    public SecurityConfig(
+            JwtAuthFilter jwtAuthFilter,
+            UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder,
+            CustomOAuth2UserService customOAuth2UserService,
+            OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler
+    ) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
         this.passwordEncoder = passwordEncoder;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
     }
 
     @Bean
@@ -47,16 +58,21 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/**").permitAll()
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**", "/oauth2/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session
+                .sessionManagement(sess -> sess
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .oauth2Login(oauth -> oauth
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService))
+                        .successHandler(oAuth2LoginSuccessHandler)
+                )
                 .authenticationProvider(authenticationProvider());
-               http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
+        http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

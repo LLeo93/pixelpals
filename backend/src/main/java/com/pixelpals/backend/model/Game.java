@@ -15,5 +15,5 @@ public class Game {
     private String genre;
     private String imageUrl;
 
-    // Nessuna relazione inversa (Mongo non gestisce bidirezionale by default)
+
 }
