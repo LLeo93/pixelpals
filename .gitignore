@@ -35,4 +35,3 @@ build/
 .env
 .env.local
 backend/env.properties
-.idea/
