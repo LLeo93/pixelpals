@@ -14,6 +14,7 @@ import com.pixelpals.backend.enumeration.SkillLevel;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,11 +23,13 @@ public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
-    public UserService(UserRepository userRepository, GameRepository gameRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, GameRepository gameRepository, PasswordEncoder passwordEncoder, EmailService emailService) {
         this.userRepository = userRepository;
         this.gameRepository = gameRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
     @Override
@@ -118,6 +121,7 @@ public class UserService implements UserDetailsService {
             // SkillLevel.valueOf fallisce se il valore non corrisponde
             return false;
         }
+
     }
     public User updateUserFields(User user, Map<String, Object> updates) {
         updates.forEach((key, value) -> {
@@ -171,5 +175,33 @@ public class UserService implements UserDetailsService {
 
         return userRepository.save(user);
     }
+    public void setUserOnlineStatus(String userId, boolean status) {
+        userRepository.findById(userId).ifPresent(user -> {
+            user.setOnline(status);
+            userRepository.save(user);
+        });
+    }
+    public User register(User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setRole("ROLE_USER");
+        user.setVerified(false);
+
+        // Genera token
+        String token = UUID.randomUUID().toString();
+        user.setVerificationToken(token);
+        User saved = userRepository.save(user);
+
+        emailService.sendVerificationEmail(saved);
+        return saved;
+    }
+
+    public boolean verifyEmail(String token) {
+        User user = userRepository.findByVerificationToken(token)
+                .orElseThrow(() -> new RuntimeException("Token non valido"));
+        user.setVerified(true);
+        userRepository.save(user);
+        return true;
+    }
+
 
 }

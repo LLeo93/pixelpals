@@ -1,6 +1,4 @@
 package com.pixelpals.backend.model;
-
-import com.pixelpals.backend.enumeration.AuthProvider;
 import com.pixelpals.backend.enumeration.SkillLevel;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
@@ -23,18 +21,18 @@ public class User implements UserDetails {
     private String password;
     private String email;
     private String role;
-    //private String passwordHash;
     private String avatarUrl;
     private String bio;
     private int level;
     private double rating;
     private boolean isOnline;
-
-    private AuthProvider authProvider;
+    private boolean verified = false;
+    private String verificationToken;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority(role));
+        String effectiveRole = (role == null || role.trim().isEmpty()) ? "ROLE_USER" : role;
+        return Collections.singletonList(new SimpleGrantedAuthority(effectiveRole));
     }
 
     @Override
@@ -57,7 +55,8 @@ public class User implements UserDetails {
         return true;
     }
 
-
+    @Override
+    public String getUsername() { return username; }
 
     private List<TimeSlot> availability;
 
@@ -71,6 +70,8 @@ public class User implements UserDetails {
     // Mappa gioco → skillLevel, convertita in forma semplice
     private Map<String, SkillLevel> skillLevelMap = new HashMap<>();
 
+    @DBRef
+    private List<Badge> badges = new ArrayList<>();
 
 }
 

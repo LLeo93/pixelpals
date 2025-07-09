@@ -11,10 +11,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @NoArgsConstructor
 @Document(collection = "games")
 public class Game {
-
     @Id
     private String id;
-
     private String name;
     private String genre;
     private String imageUrl;

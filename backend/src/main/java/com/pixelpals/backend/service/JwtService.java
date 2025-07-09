@@ -20,10 +20,10 @@ import java.util.function.Function;
 public class JwtService {
 
     @Value("${jwt.secret}")
-    private String secretKey;
+    String secretKey;
 
     @Value("${jwt.expiration}")
-    private long jwtExpiration;
+    long jwtExpiration;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -51,6 +51,9 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
+        System.out.println("Username token: " + extractUsername(token));
+        System.out.println("Username userDetails: " + userDetails.getUsername());
+        System.out.println("Token expired? " + isTokenExpired(token));
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
 
@@ -58,7 +61,7 @@ public class JwtService {
         return extractExpiration(token).before(new Date());
     }
 
-    private Date extractExpiration(String token) {
+    public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 
@@ -89,5 +92,14 @@ public class JwtService {
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+    // da togliere dopo i test
+    public void debugToken(String token) {
+        Claims claims = extractAllClaims(token);
+        System.out.println("DEBUG TOKEN:");
+        System.out.println("  Subject: " + claims.getSubject());
+        System.out.println("  Issued At: " + claims.getIssuedAt());
+        System.out.println("  Expiration: " + claims.getExpiration());
+        System.out.println("  Is expired? " + isTokenExpired(token));
     }
 }
