@@ -26,18 +26,27 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        String path = request.getServletPath();
-        // Aggiungi /api/auth/verify-email agli endpoint che non devono essere filtrati dal JWTAuthFilter
-        return path.startsWith("/api/auth/login") ||
-                path.startsWith("/api/auth/register") ||
-                path.startsWith("/api/auth/verify-email") || // <-- AGGIUNTO: Escludi l'endpoint di verifica
-                path.startsWith("/oauth2/authorization") ||
-                path.startsWith("/login/oauth2/code/");
+        String requestURI = request.getRequestURI();
+
+        System.out.println("DEBUG JwtAuthFilter: shouldNotFilter - Request URI: " + requestURI);
+
+        // Aggiungi /ws/info alla lista degli endpoint da escludere
+        boolean shouldExclude = requestURI.startsWith("/api/auth/login") ||
+                requestURI.startsWith("/api/auth/register") ||
+                requestURI.startsWith("/api/auth/verify-email") ||
+                requestURI.startsWith("/oauth2/authorization") ||
+                requestURI.startsWith("/login/oauth2/code/") ||
+                requestURI.startsWith("/ws/info"); // <-- NUOVO: Escludi l'endpoint info di SockJS
+
+        System.out.println("DEBUG JwtAuthFilter: shouldNotFilter - Should exclude: " + shouldExclude);
+        return shouldExclude;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+
+        System.out.println("DEBUG JwtAuthFilter: doFilterInternal - Processing request for URI: " + request.getRequestURI());
 
         final String authHeader = request.getHeader("Authorization");
         String jwt = null;
@@ -45,17 +54,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         // Se l'Authorization header non è presente, cerca il token come parametro di query
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
+            System.out.println("DEBUG JwtAuthFilter: Token found in Authorization header.");
         } else {
             // Questo blocco gestisce i casi in cui il token viene passato come parametro di query,
             // come nel caso del token di verifica email.
             jwt = request.getParameter("token");
             if (jwt == null) {
-                // Se non c'è Authorization header né token come parametro, è una richiesta non autenticata.
-                // Permetti al filtro di procedere per far gestire l'autorizzazione a Spring Security
-                // (che poi userà le regole permitAll() o authenticated()).
+                System.out.println("DEBUG JwtAuthFilter: No JWT found in header or query parameter. Passing through filter chain.");
                 filterChain.doFilter(request, response);
-                return; // Importante per non processare ulteriormente la richiesta in questo filtro
+                return;
             }
+            System.out.println("DEBUG JwtAuthFilter: Token found in query parameter.");
         }
 
         // Se un token (JWT o di verifica) è stato trovato, prova a processarlo
@@ -64,14 +73,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String username = null;
             try {
                 username = jwtService.extractUsername(jwt);
+                System.out.println("DEBUG JwtAuthFilter: Extracted username: " + username);
             } catch (io.jsonwebtoken.MalformedJwtException e) {
                 // Cattura specificamente MalformedJwtException se il token non è un JWT valido
                 // ma è un token di verifica che dovrebbe essere gestito altrove.
-                // In questo caso, lasciamo che la richiesta proceda al controller.
+                System.out.println("DEBUG JwtAuthFilter: MalformedJwtException caught. Token is likely a verification token. Passing through filter chain.");
                 filterChain.doFilter(request, response);
                 return;
             } catch (Exception e) {
                 // Gestisci altri errori di estrazione del username
+                System.err.println("DEBUG JwtAuthFilter: Error extracting username: " + e.getMessage());
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.getWriter().write("{\"error\": \"Invalid token: " + e.getMessage() + "\"}");
@@ -81,13 +92,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             if (username != null) {
                 UserDetails userDetails = this.userService.loadUserByUsername(username);
-                // Qui, è importante distinguere tra token di autenticazione e token di verifica.
-                // Il metodo isTokenValid è per i token di autenticazione.
-                // Per i token di verifica, la validazione avviene in AuthService.verifyUserEmail.
-                // Se il token è un token di verifica, non dobbiamo chiamare isTokenValid qui.
-                // Tuttavia, dato che shouldNotFilter ora esclude l'endpoint di verifica,
-                // questa parte del codice dovrebbe essere raggiunta solo per i token di autenticazione.
                 if (!jwtService.isTokenValid(jwt, userDetails)) {
+                    System.out.println("DEBUG JwtAuthFilter: Token is not valid for authentication.");
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
                     response.getWriter().write("{\"error\": \"Token not valid\"}");
@@ -101,7 +107,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 );
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                System.out.println("DEBUG JwtAuthFilter: Authentication set for user: " + username);
             }
+        } else {
+            System.out.println("DEBUG JwtAuthFilter: SecurityContext already has authentication. Skipping JWT processing.");
         }
 
         filterChain.doFilter(request, response);

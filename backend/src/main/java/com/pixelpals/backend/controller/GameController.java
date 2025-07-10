@@ -6,15 +6,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
 import java.util.List;
 import java.util.stream.Collectors;
-
 @RestController
-@RequestMapping("/games")
+@RequestMapping("/api/games") // <-- MODIFICATO QUI: Aggiunto "/api"
 @RequiredArgsConstructor
 public class GameController {
-
     private final GameService gameService;
 
     @GetMapping
@@ -32,3 +29,4 @@ public class GameController {
                 .collect(Collectors.toList());
     }
 }
+

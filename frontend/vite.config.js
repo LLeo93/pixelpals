@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // Aggiunto questo blocco
+    global: 'window', // Questa riga risolve il ReferenceError per 'global'
+  },
   server: {
     port: 3000,
     https: false,

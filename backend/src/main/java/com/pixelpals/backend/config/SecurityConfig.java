@@ -61,18 +61,33 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/verify-email").permitAll() // Aggiunto /verify-email
+                        // Permetti l'accesso pubblico a questi endpoint
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/verify-email**",
+                                "/ws/**" // <-- NUOVO: Permetti l'accesso a tutti gli endpoint WebSocket (inclusa /ws/info)
+                        ).permitAll()
                         // Endpoint per la gestione utenti (solo ADMIN)
-                        .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN") // GET all users
-                        .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN") // POST create user
-                        .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasRole("ADMIN") // PUT update user by ID
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").hasRole("ADMIN") // DELETE user by ID
-                        .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasRole("ADMIN") // GET user by ID (se l'admin lo usa)
+                        .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasRole("ADMIN")
 
-                        // Endpoint per il profilo dell'utente loggato (autenticato)
-                        .requestMatchers("/api/auth/me/**").authenticated() // /me e /me/update
-                        // Endpoint per la disponibilità, giochi preferiti, skill (autenticato)
-                        .requestMatchers("/api/users/availability", "/api/users/preferredGames", "/api/users/skillLevels").authenticated()
+                        // Endpoint per il profilo dell'utente loggato e dati correlati (autenticato)
+                        .requestMatchers(
+                                "/api/auth/me/**",
+                                "/api/users/availability",
+                                "/api/users/preferredGames",
+                                "/api/users/skillLevels",
+                                "/api/games",
+                                "/api/online/users",
+                                "/api/friends/**",
+                                "/api/match/**",
+                                "/api/messages/**" // Gli endpoint REST della chat rimangono autenticati
+                        ).authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users").authenticated()
 
                         .anyRequest().authenticated() // Tutte le altre richieste richiedono autenticazione
                 )

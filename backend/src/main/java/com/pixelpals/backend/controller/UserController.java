@@ -25,44 +25,33 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    public List<UserDTO> getAllUsers() {
-        return userService.getAllUsers()
-                .stream()
+    public List<UserDTO> getAllUsers(@RequestParam(required = false) String username) {
+        List<User> users;
+        if (username != null && !username.trim().isEmpty()) {
+            users = userService.searchUsersByUsername(username);
+        } else {
+            users = userService.getAllUsers();
+        }
+        return users.stream()
                 .map(UserMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     @PostMapping
     public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userDTO) {
-        // Quando un admin crea un utente, la password nel DTO potrebbe non essere hashata.
-        // È responsabilità di AuthService.register hashare la password.
-        // Qui, se stiamo creando un utente tramite il UserController,
-        // dobbiamo assicurarci che la password sia hashata prima di passarla a userService.createUser.
-        // Per semplicità e per evitare duplicazioni di logica di hashing,
-        // è spesso meglio che la creazione di nuovi utenti avvenga solo tramite l'endpoint /api/auth/register
-        // che gestisce correttamente l'hashing e la verifica.
-        // Se questo endpoint POST /api/users è strettamente per un admin che inserisce dati già "pronti",
-        // allora la password nel DTO dovrebbe essere già hashata dal frontend o da un servizio intermedio.
-        // Per ora, assumiamo che UserMapper.toEntity non hashi la password e che userService.createUser
-        // si aspetti una password chiara che *non* verrà hashata di nuovo (come da nostre modifiche recenti).
-        // Se vuoi che l'admin possa creare utenti con password in chiaro che vengono hashate,
-        // dovrai iniettare PasswordEncoder qui o nel UserService.createUser e hashare lì.
-        // Per coerenza, è meglio che l'hashing avvenga sempre in AuthService.
-        // Quindi, questo endpoint è più adatto per la creazione di utenti "interni" o pre-hashati.
         var user = UserMapper.toEntity(userDTO);
-        var created = userService.createUser(user); // Questo createUser non hasha la password
+        var created = userService.createUser(user);
         return new ResponseEntity<>(UserMapper.toDTO(created), HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable String id) {
         return userService.getUserById(id)
-                .map(user -> ResponseEntity.ok(UserMapper.toDTO(user)))
+                .map(UserMapper::toDTO)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // NUOVO ENDPOINT: AGGIORNAMENTO UTENTE TRAMITE ID (per Admin Dashboard)
-    // Questo endpoint permette all'admin di aggiornare qualsiasi campo di un utente specifico.
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody Map<String, Object> updates) {
         Optional<User> userOpt = userService.getUserById(id);
@@ -71,7 +60,7 @@ public class UserController {
         }
         try {
             User updatedUser = userService.updateUserFields(userOpt.get(), updates);
-            return ResponseEntity.ok(UserMapper.toDTO(updatedUser));
+            return new ResponseEntity<>(UserMapper.toDTO(updatedUser), HttpStatus.OK);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         } catch (RuntimeException e) {
@@ -79,15 +68,12 @@ public class UserController {
         }
     }
 
-
-    // AGGIORNAMENTO DISPONIBILITÀ (TimeSlots)
     @PutMapping("/availability")
     public ResponseEntity<?> updateAvailability(Principal principal, @RequestBody List<TimeSlot> timeSlots) {
         userService.updateAvailability(principal.getName(), timeSlots);
         return ResponseEntity.ok(Map.of("message", "Disponibilità aggiornata con successo"));
     }
 
-    // AGGIORNAMENTO GIOCHI PREFERITI (lista di nomi giochi)
     @PutMapping("/preferredGames")
     public ResponseEntity<?> updatePreferredGames(Principal principal, @RequestBody List<String> gameNames) {
         boolean success = userService.updatePreferredGames(principal.getName(), gameNames);
@@ -98,7 +84,18 @@ public class UserController {
         }
     }
 
-    // AGGIORNAMENTO SKILL LEVEL MAP (mappa gioco->skill stringhe)
+    // <-- NUOVO ENDPOINT: updatePlatforms
+    @PutMapping("/platforms")
+    public ResponseEntity<?> updatePlatforms(Principal principal, @RequestBody List<String> platformNames) {
+        boolean success = userService.updatePlatforms(principal.getName(), platformNames);
+        if (success) {
+            return ResponseEntity.ok(Map.of("message", "Piattaforme aggiornate con successo"));
+        } else {
+            return ResponseEntity.badRequest().body(Map.of("message", "Errore nell'aggiornamento delle piattaforme"));
+        }
+    }
+    // NUOVO ENDPOINT: updatePlatforms -->
+
     @PutMapping("/skillLevels")
     public ResponseEntity<?> updateSkillLevels(Principal principal, @RequestBody Map<String, String> skillLevels) {
         boolean success = userService.updateSkillLevels(principal.getName(), skillLevels);
@@ -108,6 +105,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(Map.of("message", "Errore nell'aggiornamento delle skill"));
         }
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable String id, Principal principal) {
         User currentUser = userService.getUserByUsername(principal.getName())

@@ -6,6 +6,10 @@ import ProfilePages from './pages/ProfilePage';
 import HomePage from './pages/HomePage';
 import VerificationPage from './pages/VerificationPage';
 import AdminDashboard from './pages/AdminDashboard';
+import FriendsPage from './pages/FriendsPage';
+import SetupProfilePage from './pages/SetupProfilePage';
+import MatchmakingPage from './pages/MatchMakingPage';
+import ChatPage from './pages/ChatPage';
 
 function App() {
   return (
@@ -20,6 +24,10 @@ function App() {
         />
         <Route path="/verify" element={<VerificationPage />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/friends" element={<FriendsPage />} />
+        <Route path="/setup-profile" element={<SetupProfilePage />} />
+        <Route path="/matchmaking" element={<MatchmakingPage />} />
+        <Route path="/chat" element={<ChatPage />} /> {/* <-- NUOVA ROTTA */}
       </Routes>
     </Router>
   );

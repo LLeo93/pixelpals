@@ -1,6 +1,9 @@
 package com.pixelpals.backend.dto;
 import lombok.Data;
 
+import java.util.List;
+import java.util.Map;
+
 @Data
 public class UserDTO {
     private String id;
@@ -12,4 +15,7 @@ public class UserDTO {
     private double rating;
     private boolean online;
     private boolean verified;
+    private List<GameDTO> preferredGames; // Lista di GameDTO
+    private List<PlatformDTO> platforms; // Lista di PlatformDTO
+    private Map<String, String> skillLevelMap; // Mappa GameName -> SkillLevel (stringa)
 }

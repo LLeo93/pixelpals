@@ -1,9 +1,11 @@
 package com.pixelpals.backend.service;
 
 import com.pixelpals.backend.model.Game;
+import com.pixelpals.backend.model.Platform; // Importa Platform
 import com.pixelpals.backend.model.TimeSlot;
 import com.pixelpals.backend.model.User;
 import com.pixelpals.backend.repository.GameRepository;
+import com.pixelpals.backend.repository.PlatformRepository; // Importa PlatformRepository
 import com.pixelpals.backend.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,18 +20,20 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.HashMap; // Importa HashMap
+import java.util.HashMap;
 
 @Service
 public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
+    private final PlatformRepository platformRepository; // <-- NUOVO: Inietta PlatformRepository
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, GameRepository gameRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, GameRepository gameRepository, PlatformRepository platformRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.gameRepository = gameRepository;
+        this.platformRepository = platformRepository; // <-- NUOVO: Inizializza
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -77,6 +81,13 @@ public class UserService implements UserDetailsService {
         return userRepository.findAll();
     }
 
+    public List<User> searchUsersByUsername(String usernameQuery) {
+        if (usernameQuery == null || usernameQuery.trim().isEmpty()) {
+            return userRepository.findAll();
+        }
+        return userRepository.findByUsernameContainingIgnoreCase(usernameQuery);
+    }
+
     public Optional<User> getUserById(String id) {
         return userRepository.findById(id);
     }
@@ -102,16 +113,41 @@ public class UserService implements UserDetailsService {
                 .filter(g -> gameNames.contains(g.getName()))
                 .collect(Collectors.toList());
 
-        if (games.isEmpty()) return false;
+        // Se la lista di nomi di giochi è vuota, potresti voler svuotare i giochi preferiti dell'utente
+        // o non fare nulla. Qui, se la lista è vuota, non aggiorniamo i giochi preferiti.
+        // Se vuoi permettere di svuotare, cambia la condizione.
+        // if (games.isEmpty() && !gameNames.isEmpty()) { user.setPreferredGames(Collections.emptyList()); }
+        if (games.isEmpty() && !gameNames.isEmpty()) return false; // Se non trovo giochi ma la lista non è vuota, errore.
 
         user.setPreferredGames(games);
         userRepository.save(user);
         return true;
     }
+
+    // <-- NUOVO METODO: updatePlatforms
+    public boolean updatePlatforms(String identifier, List<String> platformNames) {
+        User user = userRepository.findByEmail(identifier)
+                .or(() -> userRepository.findByUsername(identifier))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        List<Platform> platforms = platformRepository.findAll().stream()
+                .filter(p -> platformNames.contains(p.getName()))
+                .collect(Collectors.toList());
+
+        // Simile a updatePreferredGames, decidi il comportamento per lista vuota
+        if (platforms.isEmpty() && !platformNames.isEmpty()) return false;
+
+        user.setPlatforms(platforms);
+        userRepository.save(user);
+        return true;
+    }
+    // NUOVO METODO: updatePlatforms -->
+
     public boolean updateSkillLevels(String identifier, Map<String, String> skillLevels) {
         User user = userRepository.findByEmail(identifier)
                 .or(() -> userRepository.findByUsername(identifier))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
         try {
             Map<String, SkillLevel> skillMap = skillLevels.entrySet().stream()
                     .collect(Collectors.toMap(
@@ -124,14 +160,22 @@ public class UserService implements UserDetailsService {
         } catch (IllegalArgumentException e) {
             return false;
         }
+
     }
     public User updateUserFields(User user, Map<String, Object> updates) {
         // Crea una copia modificabile della mappa degli aggiornamenti
         Map<String, Object> filteredUpdates = new HashMap<>(updates);
+
         // Rimuovi i campi che non devono essere modificati tramite questo metodo
         filteredUpdates.remove("id");
         filteredUpdates.remove("isOnline"); // Rimozione per il nome del campo nell'entità
-        filteredUpdates.remove("online");   // <-- AGGIUNTO: Rimozione per il nome del campo nel DTO
+        filteredUpdates.remove("online");   // Rimozione per il nome del campo nel DTO
+        filteredUpdates.remove("preferredGames"); // Gestito da updatePreferredGames
+        filteredUpdates.remove("platforms"); // Gestito da updatePlatforms
+        filteredUpdates.remove("skillLevelMap"); // Gestito da updateSkillLevels
+        filteredUpdates.remove("availability"); // Gestito da updateAvailability
+
+
         filteredUpdates.forEach((key, value) -> {
             switch (key) {
                 case "username" -> {
@@ -142,6 +186,7 @@ public class UserService implements UserDetailsService {
                     }
                     user.setUsername(newUsername);
                 }
+
                 case "email" -> {
                     String newEmail = (String) value;
                     if (!newEmail.equals(user.getEmail()) &&
@@ -150,8 +195,11 @@ public class UserService implements UserDetailsService {
                     }
                     user.setEmail(newEmail);
                 }
+
                 case "avatarUrl" -> user.setAvatarUrl((String) value);
+
                 case "bio" -> user.setBio((String) value);
+
                 case "level" -> {
                     if (value instanceof Integer) {
                         user.setLevel((Integer) value);
@@ -161,6 +209,7 @@ public class UserService implements UserDetailsService {
                         throw new IllegalArgumentException("Il campo 'level' deve essere un intero");
                     }
                 }
+
                 case "rating" -> {
                     if (value instanceof Number) {
                         user.setRating(((Number) value).doubleValue());
@@ -174,6 +223,7 @@ public class UserService implements UserDetailsService {
                         throw new IllegalArgumentException("Il campo 'rating' deve essere un numero");
                     }
                 }
+
                 case "password" -> {
                     // La password viene hashata qui se è stata fornita una nuova password
                     String rawPassword = (String) value;
@@ -181,11 +231,14 @@ public class UserService implements UserDetailsService {
                         user.setPassword(passwordEncoder.encode(rawPassword));
                     }
                 }
-                case "role" -> user.setRole((String) value); // Aggiunto per permettere all'admin di cambiare il ruolo
-                case "verified" -> user.setVerified((Boolean) value); // Aggiunto per permettere all'admin di cambiare lo stato di verifica
+
+                case "role" -> user.setRole((String) value);
+                case "verified" -> user.setVerified((Boolean) value);
+
                 default -> throw new IllegalArgumentException("Campo '" + key + "' non supportato per l'aggiornamento");
             }
         });
+
         return userRepository.save(user);
     }
     public void setUserOnlineStatus(String userId, boolean status) {
@@ -194,6 +247,7 @@ public class UserService implements UserDetailsService {
             userRepository.save(user);
         });
     }
+
     public void verifyUserEmail(String token) {
         User user = userRepository.findByVerificationToken(token)
                 .orElseThrow(() -> new RuntimeException("Token di verifica non valido o già utilizzato."));
@@ -201,9 +255,11 @@ public class UserService implements UserDetailsService {
         if (user.isVerified()) {
             throw new RuntimeException("L'account è già stato verificato.");
         }
+
         if (user.getTokenExpirationDate() == null || user.getTokenExpirationDate().before(new Date())) {
             throw new RuntimeException("Il token di verifica è scaduto.");
         }
+
         user.setVerified(true);
         user.setVerificationToken(null);
         user.setTokenExpirationDate(null);
