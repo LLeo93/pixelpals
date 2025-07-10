@@ -13,10 +13,8 @@ import java.util.*;
 @Document(collection = "users") // MongoDB collection
 @Data
 public class User implements UserDetails {
-
     @Id
     private String id;
-
     private String username;
     private String password;
     private String email;
@@ -26,52 +24,41 @@ public class User implements UserDetails {
     private int level;
     private double rating;
     private boolean isOnline;
-    private boolean verified = false;
+    private boolean verified = false; // Questo campo controlla l'abilitazione
     private String verificationToken;
-
+    private Date tokenExpirationDate; // NUOVO CAMPO per la data di scadenza del token
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         String effectiveRole = (role == null || role.trim().isEmpty()) ? "ROLE_USER" : role;
         return Collections.singletonList(new SimpleGrantedAuthority(effectiveRole));
     }
-
     @Override
     public boolean isAccountNonExpired() {
         return true;
     }
-
     @Override
     public boolean isAccountNonLocked() {
         return true;
     }
-
     @Override
     public boolean isCredentialsNonExpired() {
         return true;
     }
-
     @Override
     public boolean isEnabled() {
-        return true;
+        // Un utente è abilitato solo se è verificato
+        return this.verified; // <--- QUESTA RIGA CAUSA LA DISABILITAZIONE SE 'verified' è false
     }
-
     @Override
     public String getUsername() { return username; }
-
     private List<TimeSlot> availability;
-
     // Riferimenti a piattaforme (DBRef = tipo foreign key Mongo)
     @DBRef
     private List<Platform> platforms = new ArrayList<>();
-
     @DBRef
     private List<Game> preferredGames = new ArrayList<>();
-
     // Mappa gioco → skillLevel, convertita in forma semplice
     private Map<String, SkillLevel> skillLevelMap = new HashMap<>();
-
     @DBRef
     private List<Badge> badges = new ArrayList<>();
-
 }
-

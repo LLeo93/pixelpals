@@ -25,6 +25,10 @@ public class JwtService {
     @Value("${jwt.expiration}")
     long jwtExpiration;
 
+    // Nuovo valore per la scadenza del token di verifica (es. 24 ore = 86400000 ms)
+    @Value("${jwt.verification.expiration}")
+    long verificationTokenExpiration;
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -57,7 +61,8 @@ public class JwtService {
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
 
-    private boolean isTokenExpired(String token) {
+    // Modificato da private a public
+    public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
@@ -79,20 +84,20 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // --- Metodo aggiunto per generare token da User (non UserDetails) ---
-    public String generateToken(User user) {
-        // Se User implementa UserDetails puoi fare: return generateToken((UserDetails) user);
-        // Altrimenti uso l'email come subject
+    // --- Metodo aggiunto per generare token di verifica da User ---
+    public String generateVerificationToken(User user) {
         Map<String, Object> claims = new HashMap<>();
+        // Potresti aggiungere claims specifici per la verifica se necessario, es. "type": "verification"
         return Jwts
                 .builder()
                 .setClaims(claims)
-                .setSubject(user.getEmail())
+                .setSubject(user.getEmail()) // Usiamo l'email come subject per la verifica
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .setExpiration(new Date(System.currentTimeMillis() + verificationTokenExpiration)) // Scadenza specifica
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
     // da togliere dopo i test
     public void debugToken(String token) {
         Claims claims = extractAllClaims(token);

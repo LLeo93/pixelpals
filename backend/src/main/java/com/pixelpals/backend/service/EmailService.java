@@ -18,13 +18,14 @@ public class EmailService {
     @Value("${spring.mail.username}") // Utilizza spring.mail.username come mittente
     private String fromEmail; // Rinominato per chiarezza
 
-    public void sendVerificationEmail(User user) {
+    // Modificato per accettare il token
+    public void sendVerificationEmail(User user, String verificationToken) {
         // Aggiungi un blocco try-catch per catturare e loggare eventuali errori di invio email
         try {
             String subject = "Conferma la tua email";
-            // TODO: Inserisci qui il link di verifica reale. Potrebbe essere un URL generato con un token.
-            // Per ora, è un placeholder.
-            String verificationLink = "http://localhost:3000/verify?token=YOUR_VERIFICATION_TOKEN_HERE"; // Esempio
+            // Costruisci il link di verifica usando il token effettivo
+            String verificationLink = "http://localhost:3000/verify?token=" + verificationToken; // Usa il token passato
+
             String content = "Ciao " + user.getUsername() + ",\n\n"
                     + "Conferma il tuo account cliccando il link:\n"
                     + verificationLink + "\n\n"
@@ -35,7 +36,7 @@ public class EmailService {
             message.setTo(user.getEmail()); // Assicurati che user.getEmail() non sia null
             message.setSubject(subject);
             message.setText(content);
-
+            System.out.println("Verification Link: " + verificationLink);
             mailSender.send(message);
             System.out.println("Email di verifica inviata a: " + user.getEmail());
         } catch (Exception e) {

@@ -16,6 +16,7 @@ public class UserMapper {
         dto.setLevel(user.getLevel());
         dto.setRating(user.getRating());
         dto.setOnline(user.isOnline());
+        dto.setVerified(user.isVerified());
         return dto;
     }
 
@@ -30,6 +31,7 @@ public class UserMapper {
         user.setLevel(dto.getLevel());
         user.setRating(dto.getRating());
         user.setOnline(dto.isOnline());
+        user.setVerified(dto.isVerified());
         return user;
     }
 }

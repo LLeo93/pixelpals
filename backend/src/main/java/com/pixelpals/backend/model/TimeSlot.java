@@ -13,7 +13,6 @@ public class TimeSlot {
     private DayOfWeek dayOfWeek;
     @JsonFormat(pattern = "HH:mm")
     private LocalTime startTime;
-
     @JsonFormat(pattern = "HH:mm")
     private LocalTime endTime;
 }

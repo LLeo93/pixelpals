@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axiosWithAuth from '../services/axiosWhitAuth';
+import axiosWithAuth from '../services/axiosWithAuth';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 const ProfilePages = () => {
   const [form, setForm] = useState({});
@@ -20,12 +22,11 @@ const ProfilePages = () => {
       }
 
       try {
-        const { data } = await axiosWithAuth.get('/me');
-        // Converti level e rating a numeri quando carichi i dati iniziali
+        const { data } = await axiosWithAuth.get('/auth/me');
         setForm({
           ...data,
-          level: Number(data.level), // Assicura che sia un numero
-          rating: Number(data.rating), // Assicura che sia un numero
+          level: Number(data.level),
+          rating: Number(data.rating),
         });
         setOriginal({
           ...data,
@@ -35,7 +36,11 @@ const ProfilePages = () => {
       } catch (err) {
         console.error('Errore caricamento profilo:', err);
         setError('Errore durante il caricamento del profilo.');
-        if (err.response?.status === 401) {
+        if (
+          err.response?.status === 401 ||
+          err.response?.status === 403 ||
+          err.response?.status === 404
+        ) {
           localStorage.clear();
           navigate('/');
         }
@@ -48,14 +53,11 @@ const ProfilePages = () => {
   }, [navigate]);
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target; // Ottieni anche il tipo dell'input
+    const { name, value, type } = e.target;
 
     setForm((prev) => {
       let newValue = value;
-      // Converti in numero se il tipo è 'number'
       if (type === 'number') {
-        // Usa Number() per convertire in numero (float o integer)
-        // Se il campo è vuoto, imposta a 0 o null a seconda delle tue esigenze
         newValue = value === '' ? '' : Number(value);
       }
       return { ...prev, [name]: newValue };
@@ -68,41 +70,25 @@ const ProfilePages = () => {
     setError('');
 
     const updatedFields = Object.keys(form).reduce((acc, key) => {
-      // Per 'level' e 'rating', assicurati che i valori siano numeri validi
-      // e confrontali con gli originali per vedere se sono cambiati.
-      // Se il valore è un numero e non è cambiato, non includerlo.
-      // Se è cambiato, includilo.
       if (key === 'level' || key === 'rating') {
-        const parsedValue = Number(form[key]); // Converti esplicitamente in numero
+        const parsedValue = Number(form[key]);
         if (!isNaN(parsedValue) && parsedValue !== original[key]) {
           acc[key] = parsedValue;
         } else if (isNaN(parsedValue) && form[key] !== original[key]) {
-          // Se il valore è NaN (es. l'utente ha svuotato il campo numerico)
-          // e l'originale non era NaN (cioè era un numero),
-          // puoi decidere se inviare null, 0 o lasciare invariato.
-          // Per ora, lo inviamo come null o 0, a seconda di come lo gestisce il backend.
-          // L'errore del backend suggerisce che non accetta "non-numerici".
-          // Quindi, potremmo voler non inviare il campo se non è un numero valido.
-          // Oppure validare a livello di frontend.
           if (form[key] === '') {
-            // Se il campo è stato svuotato
-            acc[key] = 0; // O null, se il backend accetta null per int
+            acc[key] = 0;
           } else {
-            // Se non è un numero valido e non è vuoto, gestisci l'errore o non includere il campo
             console.warn(
               `Campo ${key} non numerico valido: ${form[key]}. Non verrà inviato.`
             );
-            // Potresti voler mostrare un errore all'utente qui
           }
         }
       } else if (form[key] !== original[key]) {
-        // Per tutti gli altri campi, mantieni la logica esistente
         acc[key] = form[key];
       }
       return acc;
     }, {});
 
-    // Aggiungi qui una validazione frontend per level e rating
     if (
       updatedFields.level !== undefined &&
       !Number.isInteger(updatedFields.level)
@@ -121,7 +107,7 @@ const ProfilePages = () => {
     }
 
     try {
-      const res = await axiosWithAuth.put('/me/update', updatedFields);
+      const res = await axiosWithAuth.put('/auth/me/update', updatedFields);
       setForm({
         ...res.data,
         level: Number(res.data.level),
@@ -135,7 +121,6 @@ const ProfilePages = () => {
       setMsg('Profilo aggiornato con successo.');
     } catch (err) {
       console.error('Errore aggiornamento:', err);
-      // Puoi migliorare la gestione degli errori qui
       if (err.response && err.response.data && err.response.data.message) {
         setError(`Errore: ${err.response.data.message}`);
       } else {
@@ -144,102 +129,107 @@ const ProfilePages = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate('/');
-  };
-
   if (loading) {
     return (
-      <div className="text-center py-10 text-purple-600 font-medium text-lg">
+      <div className="text-center py-10 text-purple-400 font-medium text-lg font-oxanium">
         Caricamento profilo...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-700 to-purple-700 py-12 px-4">
-      <div className="max-w-2xl mx-auto bg-white shadow-xl rounded-2xl p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-purple-700">Il mio profilo</h2>
-          <button
-            onClick={handleLogout}
-            className="text-red-600 text-sm underline"
-          >
-            Logout
-          </button>
+    <>
+      <Navbar />
+      {/* Sfondo più scuro e "techy" con gradiente e effetto noise */}
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-900 via-black to-blue-900 text-white font-inter relative overflow-hidden">
+        {/* Effetto noise/griglia di sfondo */}
+        <div
+          className="absolute inset-0 z-0 opacity-10"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%239C92AC' fill-opacity='0.1' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E\")",
+          }}
+        ></div>
+
+        {/* Contenitore del form con stile gaming */}
+        <div className="flex-grow max-w-2xl mx-auto bg-gray-800 bg-opacity-90 shadow-2xl rounded-2xl p-8 mt-24 mb-24 w-full px-4 text-gray-200 border border-purple-700 transform transition-all duration-300 hover:scale-105 relative z-10">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-3xl font-bold text-purple-400 font-oxanium drop-shadow-lg">
+              IL MIO PROFILO
+            </h2>
+          </div>
+
+          {msg && <Alert type="success" message={msg} />}
+          {error && <Alert type="error" message={error} />}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              label="Username"
+              name="username"
+              value={form.username}
+              onChange={handleChange}
+            />
+            <Input
+              label="Email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              type="email"
+            />
+            <Input
+              label="Avatar URL"
+              name="avatarUrl"
+              value={form.avatarUrl}
+              onChange={handleChange}
+            />
+            <Textarea
+              label="Bio"
+              name="bio"
+              value={form.bio}
+              onChange={handleChange}
+            />
+            <Input
+              label="Livello"
+              name="level"
+              value={form.level}
+              onChange={handleChange}
+              type="number"
+              min="0"
+              step="1"
+            />
+            <Input
+              label="Rating"
+              name="rating"
+              value={form.rating}
+              onChange={handleChange}
+              type="number"
+              step="0.1"
+              min="0"
+              max="10"
+            />
+            <Input
+              label="Nuova Password"
+              name="password"
+              value={form.password || ''}
+              onChange={handleChange}
+              type="password"
+            />
+
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 rounded-md transition duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl text-lg tracking-wide"
+            >
+              SALVA MODIFICHE
+            </button>
+          </form>
         </div>
-
-        {msg && <Alert type="success" message={msg} />}
-        {error && <Alert type="error" message={error} />}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Username"
-            name="username"
-            value={form.username}
-            onChange={handleChange}
-          />
-          <Input
-            label="Email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            type="email"
-          />
-          <Input
-            label="Avatar URL"
-            name="avatarUrl"
-            value={form.avatarUrl}
-            onChange={handleChange}
-          />
-          <Textarea
-            label="Bio"
-            name="bio"
-            value={form.bio}
-            onChange={handleChange}
-          />
-          <Input
-            label="Livello"
-            name="level"
-            value={form.level} // Il valore per l'input di tipo "number" può essere una stringa vuota per indicare che non c'è valore
-            onChange={handleChange}
-            type="number"
-            min="0" // Aggiungi min/max se appropriato
-            step="1" // Forse vuoi che il level sia sempre un intero
-          />
-          <Input
-            label="Rating"
-            name="rating"
-            value={form.rating}
-            onChange={handleChange}
-            type="number"
-            step="0.1"
-            min="0" // Aggiungi min/max se appropriato
-            max="10" // Ad esempio, se il rating va da 0 a 10
-          />
-          <Input
-            label="Nuova Password"
-            name="password"
-            value={form.password || ''}
-            onChange={handleChange}
-            type="password"
-          />
-
-          <button
-            type="submit"
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-md transition"
-          >
-            Salva modifiche
-          </button>
-        </form>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 };
 
-// I componenti Input, Textarea e Alert rimangono invariati,
-// a parte l'aggiunta di `step`, `min`, `max` nel componente Input.
+// I componenti Input, Textarea e Alert sono stati aggiornati per il tema scuro
 const Input = ({
   label,
   name,
@@ -249,32 +239,35 @@ const Input = ({
   step,
   min,
   max,
+  placeholder,
+  required = false,
 }) => (
   <div>
-    <label className="block text-sm font-medium text-gray-700">{label}</label>
+    <label className="block text-sm font-medium text-gray-300">{label}</label>
     <input
       name={name}
-      value={value === 0 ? 0 : value || ''} // Gestisci il caso in cui il valore sia 0 (number) o null/undefined
+      value={value === 0 ? 0 : value || ''}
       onChange={onChange}
       type={type}
       step={step}
-      min={min} // Passa min
-      max={max} // Passa max
-      required={name === 'username' || name === 'email'}
-      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+      min={min}
+      max={max}
+      placeholder={placeholder}
+      required={required}
+      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-base"
     />
   </div>
 );
 
 const Textarea = ({ label, name, value, onChange }) => (
   <div>
-    <label className="block text-sm font-medium text-gray-700">{label}</label>
+    <label className="block text-sm font-medium text-gray-300">{label}</label>
     <textarea
       name={name}
       value={value || ''}
       onChange={onChange}
       rows={4}
-      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-base"
     />
   </div>
 );
@@ -282,11 +275,11 @@ const Textarea = ({ label, name, value, onChange }) => (
 const Alert = ({ type, message }) => {
   const base =
     type === 'success'
-      ? 'bg-green-100 border-green-400 text-green-700'
-      : 'bg-red-100 border-red-400 text-red-700';
+      ? 'bg-green-900 border-green-700 text-green-300'
+      : 'bg-red-900 border-red-700 text-red-300';
   return (
     <div
-      className={`border px-4 py-3 rounded mb-4 ${base}`}
+      className={`relative z-50 border px-4 py-3 rounded mb-4 ${base}`}
       role="alert"
       aria-live="polite"
     >

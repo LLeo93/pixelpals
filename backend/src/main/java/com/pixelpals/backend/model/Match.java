@@ -11,19 +11,14 @@ import java.time.LocalDateTime;
 @Data
 @Document(collection = "matches")
 public class Match {
-
     @Id
     private String id;
-
     @DBRef
     private User userA;
-
     @DBRef
     private User userB;
-
     @DBRef
     private Game game;
-
     private LocalDateTime matchedAt;
     private MatchStatus status;
 }

@@ -7,8 +7,8 @@ import com.pixelpals.backend.dto.UserDTO;
 import com.pixelpals.backend.mapper.UserMapper;
 import com.pixelpals.backend.model.User;
 import com.pixelpals.backend.service.AuthService;
-import com.pixelpals.backend.service.EmailService; // Importa EmailService
-import com.pixelpals.backend.service.UserService; // Importa UserService
+import com.pixelpals.backend.service.EmailService;
+import com.pixelpals.backend.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -26,32 +26,25 @@ import java.util.Optional;
 public class AuthController {
 
     private final AuthService authService;
-    private final EmailService emailService; // Dichiarato come final e iniettato
-    private final UserService userService; // Dichiarato come final e iniettato
+    // Rimosso l'iniezione di EmailService qui, poiché AuthService lo gestisce internamente
+    private final UserService userService;
 
-    // Inietta tutti i servizi necessari tramite il costruttore
-    public AuthController(AuthService authService, EmailService emailService, UserService userService) {
+    // Aggiornato il costruttore
+    public AuthController(AuthService authService, UserService userService) {
         this.authService = authService;
-        this.emailService = emailService;
         this.userService = userService;
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         try {
-            // Cattura l'utente appena registrato dal servizio di autenticazione
-            User registeredUser = authService.register(request);
-
-            // Invia l'email di verifica all'utente appena registrato
-            // Questo metodo può lanciare un'eccezione se l'invio fallisce
-            emailService.sendVerificationEmail(registeredUser);
+            // AuthService.register ora gestisce l'intera logica di registrazione,
+            // inclusa la generazione del token di verifica e l'invio dell'email.
+            authService.register(request);
 
             return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully. Verification email sent.");
         } catch (RuntimeException e) {
-            // Se l'emailService.sendVerificationEmail lancia una RuntimeException,
-            // questa viene catturata qui.
-            // Potresti voler distinguere tra errori di registrazione e errori di invio email.
-            System.err.println("Errore durante la registrazione o l'invio dell'email: " + e.getMessage());
+            System.err.println("Errore durante la registrazione: " + e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -101,4 +94,15 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Utente non autenticato");
     }
 
+    // NUOVO ENDPOINT PER LA VERIFICA EMAIL
+    @GetMapping("/verify-email")
+    public ResponseEntity<String> verifyEmail(@RequestParam("token") String token) {
+        try {
+            authService.verifyUserEmail(token); // Delega la logica al servizio di autenticazione
+            return ResponseEntity.ok("Email verificata con successo!");
+        } catch (RuntimeException e) {
+            System.err.println("Errore verifica email: " + e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

@@ -11,4 +11,5 @@ public class UserDTO {
     private int level;
     private double rating;
     private boolean online;
+    private boolean verified;
 }

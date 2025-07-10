@@ -11,11 +11,14 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.pixelpals.backend.enumeration.SkillLevel;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.HashMap; // Importa HashMap
 
 @Service
 public class UserService implements UserDetailsService {
@@ -23,13 +26,11 @@ public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
 
-    public UserService(UserRepository userRepository, GameRepository gameRepository, PasswordEncoder passwordEncoder, EmailService emailService) {
+    public UserService(UserRepository userRepository, GameRepository gameRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.gameRepository = gameRepository;
         this.passwordEncoder = passwordEncoder;
-        this.emailService = emailService;
     }
 
     @Override
@@ -53,17 +54,24 @@ public class UserService implements UserDetailsService {
         return userRepository.findByUsername(username);
     }
 
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
     public User saveUser(User user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword())); // Cripta la password
         if (user.getRole() == null || user.getRole().isEmpty()) {
-            user.setRole("ROLE_USER"); // Ruolo di default
+            user.setRole("ROLE_USER");
         }
         return userRepository.save(user);
     }
 
     public User createUser(User user) {
+        if (user.getRole() == null || user.getRole().isEmpty()) {
+            user.setRole("ROLE_USER");
+        }
         return userRepository.save(user);
     }
+
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
@@ -77,7 +85,6 @@ public class UserService implements UserDetailsService {
         userRepository.deleteById(id);
     }
 
-    // Aggiorna disponibilità (TimeSlots)
     public User updateAvailability(String identifier, List<TimeSlot> timeSlots) {
         User user = userRepository.findByEmail(identifier)
                 .or(() -> userRepository.findByUsername(identifier))
@@ -86,7 +93,6 @@ public class UserService implements UserDetailsService {
         return userRepository.save(user);
     }
 
-    // Aggiorna giochi preferiti da lista nomi giochi
     public boolean updatePreferredGames(String identifier, List<String> gameNames) {
         User user = userRepository.findByEmail(identifier)
                 .or(() -> userRepository.findByUsername(identifier))
@@ -102,12 +108,10 @@ public class UserService implements UserDetailsService {
         userRepository.save(user);
         return true;
     }
-
     public boolean updateSkillLevels(String identifier, Map<String, String> skillLevels) {
         User user = userRepository.findByEmail(identifier)
                 .or(() -> userRepository.findByUsername(identifier))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
         try {
             Map<String, SkillLevel> skillMap = skillLevels.entrySet().stream()
                     .collect(Collectors.toMap(
@@ -118,13 +122,17 @@ public class UserService implements UserDetailsService {
             userRepository.save(user);
             return true;
         } catch (IllegalArgumentException e) {
-            // SkillLevel.valueOf fallisce se il valore non corrisponde
             return false;
         }
-
     }
     public User updateUserFields(User user, Map<String, Object> updates) {
-        updates.forEach((key, value) -> {
+        // Crea una copia modificabile della mappa degli aggiornamenti
+        Map<String, Object> filteredUpdates = new HashMap<>(updates);
+        // Rimuovi i campi che non devono essere modificati tramite questo metodo
+        filteredUpdates.remove("id");
+        filteredUpdates.remove("isOnline"); // Rimozione per il nome del campo nell'entità
+        filteredUpdates.remove("online");   // <-- AGGIUNTO: Rimozione per il nome del campo nel DTO
+        filteredUpdates.forEach((key, value) -> {
             switch (key) {
                 case "username" -> {
                     String newUsername = (String) value;
@@ -134,7 +142,6 @@ public class UserService implements UserDetailsService {
                     }
                     user.setUsername(newUsername);
                 }
-
                 case "email" -> {
                     String newEmail = (String) value;
                     if (!newEmail.equals(user.getEmail()) &&
@@ -143,36 +150,42 @@ public class UserService implements UserDetailsService {
                     }
                     user.setEmail(newEmail);
                 }
-
                 case "avatarUrl" -> user.setAvatarUrl((String) value);
-
                 case "bio" -> user.setBio((String) value);
-
                 case "level" -> {
                     if (value instanceof Integer) {
                         user.setLevel((Integer) value);
+                    } else if (value instanceof Number) {
+                        user.setLevel(((Number) value).intValue());
                     } else {
                         throw new IllegalArgumentException("Il campo 'level' deve essere un intero");
                     }
                 }
-
                 case "rating" -> {
-                    try {
-                        user.setRating(Double.parseDouble(value.toString()));
-                    } catch (NumberFormatException e) {
+                    if (value instanceof Number) {
+                        user.setRating(((Number) value).doubleValue());
+                    } else if (value instanceof String) {
+                        try {
+                            user.setRating(Double.parseDouble((String) value));
+                        } catch (NumberFormatException e) {
+                            throw new IllegalArgumentException("Il campo 'rating' deve essere un numero");
+                        }
+                    } else {
                         throw new IllegalArgumentException("Il campo 'rating' deve essere un numero");
                     }
                 }
-
                 case "password" -> {
+                    // La password viene hashata qui se è stata fornita una nuova password
                     String rawPassword = (String) value;
-                    user.setPassword(passwordEncoder.encode(rawPassword));
+                    if (rawPassword != null && !rawPassword.isEmpty()) {
+                        user.setPassword(passwordEncoder.encode(rawPassword));
+                    }
                 }
-
+                case "role" -> user.setRole((String) value); // Aggiunto per permettere all'admin di cambiare il ruolo
+                case "verified" -> user.setVerified((Boolean) value); // Aggiunto per permettere all'admin di cambiare lo stato di verifica
                 default -> throw new IllegalArgumentException("Campo '" + key + "' non supportato per l'aggiornamento");
             }
         });
-
         return userRepository.save(user);
     }
     public void setUserOnlineStatus(String userId, boolean status) {
@@ -181,27 +194,19 @@ public class UserService implements UserDetailsService {
             userRepository.save(user);
         });
     }
-    public User register(User user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRole("ROLE_USER");
-        user.setVerified(false);
-
-        // Genera token
-        String token = UUID.randomUUID().toString();
-        user.setVerificationToken(token);
-        User saved = userRepository.save(user);
-
-        emailService.sendVerificationEmail(saved);
-        return saved;
-    }
-
-    public boolean verifyEmail(String token) {
+    public void verifyUserEmail(String token) {
         User user = userRepository.findByVerificationToken(token)
-                .orElseThrow(() -> new RuntimeException("Token non valido"));
+                .orElseThrow(() -> new RuntimeException("Token di verifica non valido o già utilizzato."));
+
+        if (user.isVerified()) {
+            throw new RuntimeException("L'account è già stato verificato.");
+        }
+        if (user.getTokenExpirationDate() == null || user.getTokenExpirationDate().before(new Date())) {
+            throw new RuntimeException("Il token di verifica è scaduto.");
+        }
         user.setVerified(true);
+        user.setVerificationToken(null);
+        user.setTokenExpirationDate(null);
         userRepository.save(user);
-        return true;
     }
-
-
 }

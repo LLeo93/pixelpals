@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -33,8 +34,23 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userDTO) {
+        // Quando un admin crea un utente, la password nel DTO potrebbe non essere hashata.
+        // È responsabilità di AuthService.register hashare la password.
+        // Qui, se stiamo creando un utente tramite il UserController,
+        // dobbiamo assicurarci che la password sia hashata prima di passarla a userService.createUser.
+        // Per semplicità e per evitare duplicazioni di logica di hashing,
+        // è spesso meglio che la creazione di nuovi utenti avvenga solo tramite l'endpoint /api/auth/register
+        // che gestisce correttamente l'hashing e la verifica.
+        // Se questo endpoint POST /api/users è strettamente per un admin che inserisce dati già "pronti",
+        // allora la password nel DTO dovrebbe essere già hashata dal frontend o da un servizio intermedio.
+        // Per ora, assumiamo che UserMapper.toEntity non hashi la password e che userService.createUser
+        // si aspetti una password chiara che *non* verrà hashata di nuovo (come da nostre modifiche recenti).
+        // Se vuoi che l'admin possa creare utenti con password in chiaro che vengono hashate,
+        // dovrai iniettare PasswordEncoder qui o nel UserService.createUser e hashare lì.
+        // Per coerenza, è meglio che l'hashing avvenga sempre in AuthService.
+        // Quindi, questo endpoint è più adatto per la creazione di utenti "interni" o pre-hashati.
         var user = UserMapper.toEntity(userDTO);
-        var created = userService.createUser(user);
+        var created = userService.createUser(user); // Questo createUser non hasha la password
         return new ResponseEntity<>(UserMapper.toDTO(created), HttpStatus.CREATED);
     }
 
@@ -44,6 +60,25 @@ public class UserController {
                 .map(user -> ResponseEntity.ok(UserMapper.toDTO(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    // NUOVO ENDPOINT: AGGIORNAMENTO UTENTE TRAMITE ID (per Admin Dashboard)
+    // Questo endpoint permette all'admin di aggiornare qualsiasi campo di un utente specifico.
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody Map<String, Object> updates) {
+        Optional<User> userOpt = userService.getUserById(id);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        try {
+            User updatedUser = userService.updateUserFields(userOpt.get(), updates);
+            return ResponseEntity.ok(UserMapper.toDTO(updatedUser));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Errore interno durante l'aggiornamento dell'utente."));
+        }
+    }
+
 
     // AGGIORNAMENTO DISPONIBILITÀ (TimeSlots)
     @PutMapping("/availability")

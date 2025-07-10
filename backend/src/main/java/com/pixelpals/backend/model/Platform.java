@@ -11,12 +11,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Platform {
-
     @Id
     private String id;
-
     private String name;
     private String iconUrl;
-
-
 }

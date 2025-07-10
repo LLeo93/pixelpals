@@ -10,21 +10,17 @@ import java.util.stream.Collectors;
 
 @Service
 public class MessageService {
-
     private final MessageRepository messageRepository;
     private final MessageMapper messageMapper;
-
     public MessageService(MessageRepository messageRepository, MessageMapper messageMapper) {
         this.messageRepository = messageRepository;
         this.messageMapper = messageMapper;
     }
-
     public MessageDTO sendMessage(MessageDTO dto) {
         dto.setSentAt(LocalDateTime.now());
         Message message = messageMapper.toEntity(dto);
         return messageMapper.toDTO(messageRepository.save(message));
     }
-
     public List<MessageDTO> getMessagesByMatch(String matchId) {
         return messageRepository.findAll().stream()
                 .filter(msg -> msg.getMatch().getId().equals(matchId))
