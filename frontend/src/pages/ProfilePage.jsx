@@ -14,6 +14,7 @@ import {
   faStar,
   faLevelUpAlt,
   faAward,
+  faCheck,
 } from '@fortawesome/free-solid-svg-icons';
 
 const ProfilePage = () => {

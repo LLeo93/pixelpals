@@ -61,34 +61,39 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // Permetti l'accesso pubblico a questi endpoint
+                        // 1. Endpoint Pubblici (Accesso a chiunque, anche non autenticato)
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/register",
                                 "/api/auth/verify-email**",
-                                "/ws/**" // <-- NUOVO: Permetti l'accesso a tutti gli endpoint WebSocket (inclusa /ws/info)
+                                "/ws/**"
                         ).permitAll()
-                        // Endpoint per la gestione utenti (solo ADMIN)
-                        .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
+
+                        // 2. Endpoint Specifici per l'aggiornamento del proprio profilo (Accesso a qualsiasi utente autenticato)
+                        // Questi endpoint NON usano un {id} nel path, si basano sul token JWT dell'utente.
+                        .requestMatchers(HttpMethod.PUT, "/api/users/preferredGames").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/users/platforms").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/users/skillLevels").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/users/availability").authenticated()
+
+                        // 3. Endpoint di Gestione Utenti (Solo per ADMIN)
+                        // Questi endpoint tipicamente operano su un {id} specifico o su tutti gli utenti
                         .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasRole("ADMIN")
 
-                        // Endpoint per il profilo dell'utente loggato e dati correlati (autenticato)
+                        // 4. Endpoint Generali per Utenti Autenticati (GET su listi, proprie risorse)
+                        // Qui vanno tutti gli endpoint che richiedono autenticazione ma non sono admin-specifici
+                        .requestMatchers(HttpMethod.GET, "/api/users").authenticated() // GET per la ricerca utenti
                         .requestMatchers(
-                                "/api/auth/me/**",
-                                "/api/users/availability",
-                                "/api/users/preferredGames",
-                                "/api/users/skillLevels",
-                                "/api/games",
-                                "/api/online/users",
-                                "/api/friends/**",
-                                "/api/match/**",
-                                "/api/messages/**" // Gli endpoint REST della chat rimangono autenticati
+                                "/api/auth/me/**", // Il proprio profilo loggato
+                                "/api/games", // Lista giochi
+                                "/api/online/users", // Utenti online
+                                "/api/friends/**", // Gestione amicizie
+                                "/api/match/**", // Gestione match
+                                "/api/messages/**" // Messaggistica
                         ).authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/users").authenticated()
-
                         .anyRequest().authenticated() // Tutte le altre richieste richiedono autenticazione
                 )
                 .sessionManagement(sess -> sess

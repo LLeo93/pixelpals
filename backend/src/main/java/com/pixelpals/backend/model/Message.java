@@ -20,5 +20,6 @@ public class Message {
     private String content; // Contenuto del messaggio
     private Date timestamp; // Data e ora del messaggio
     private String chatRoomId; // ID della chat room
+    private boolean read = false;
 }
 

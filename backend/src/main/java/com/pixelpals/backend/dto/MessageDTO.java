@@ -13,4 +13,5 @@ public class MessageDTO {
     private String content; // Contenuto del messaggio
     private Date timestamp; // Timestamp del messaggio
     private String chatRoomId; // ID della chat room
+    private boolean read;
 }

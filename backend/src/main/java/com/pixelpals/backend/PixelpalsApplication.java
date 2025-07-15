@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @EnableMongoRepositories(basePackages = "com.pixelpals.backend.repository")
 @SpringBootApplication
 public class
+
 PixelpalsApplication {
 
 	public static void main(String[] args) {

@@ -121,6 +121,13 @@
 			<version>2.3.4</version>
 		</dependency>
 		<dependency>
+			<groupId>org.hibernate.validator</groupId>
+			<artifactId>hibernate-validator</artifactId>
+			<!-- Usa la versione compatibile con il tuo Spring Boot e Jakarta Validation API -->
+			<!-- Per Spring Boot 3.x, dovrebbe essere 8.x.x o superiore -->
+			<version>8.0.1.Final</version> <!-- Controlla l'ultima versione stabile compatibile con Jakarta EE 10/Spring Boot 3 -->
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>

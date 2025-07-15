@@ -1,32 +1,40 @@
 package com.pixelpals.backend.config;
 
+import com.pixelpals.backend.WebSocket.WebSocketAuthenticationInterceptor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 @Configuration
-@EnableWebSocketMessageBroker // Abilita il supporto per i messaggi basati su WebSocket
+@EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final WebSocketAuthenticationInterceptor webSocketAuthenticationInterceptor;
+
+    // Inietta il WebSocketAuthenticationInterceptor
+    public WebSocketConfig(WebSocketAuthenticationInterceptor webSocketAuthenticationInterceptor) {
+        this.webSocketAuthenticationInterceptor = webSocketAuthenticationInterceptor;
+    }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Abilita un broker di messaggi in memoria per inviare messaggi ai client
-        // I messaggi con prefisso "/topic" saranno indirizzati al broker
-        config.enableSimpleBroker("/topic");
-        // I messaggi con prefisso "/app" saranno indirizzati ai metodi @MessageMapping
+        config.enableSimpleBroker("/topic", "/user"); // Aggiunto "/user" per messaggi privati
         config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Registra un endpoint STOMP per la connessione WebSocket
-        // I client si connetteranno a "/ws"
-        // .withSockJS() abilita il fallback per i browser che non supportano i WebSocket nativi
-        // .setAllowedOriginPatterns("*") permette connessioni da qualsiasi origine (per sviluppo)
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // Permette connessioni da qualsiasi origine (per sviluppo)
+                .setAllowedOriginPatterns("*")
                 .withSockJS();
+    }
+
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        // Registra il tuo intercettore per il canale in ingresso
+        registration.interceptors(webSocketAuthenticationInterceptor);
     }
 }
