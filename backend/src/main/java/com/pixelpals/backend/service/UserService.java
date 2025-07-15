@@ -1,11 +1,11 @@
 package com.pixelpals.backend.service;
 
 import com.pixelpals.backend.model.Game;
-import com.pixelpals.backend.model.Platform; // Importa Platform
+import com.pixelpals.backend.model.Platform;
 import com.pixelpals.backend.model.TimeSlot;
 import com.pixelpals.backend.model.User;
 import com.pixelpals.backend.repository.GameRepository;
-import com.pixelpals.backend.repository.PlatformRepository; // Importa PlatformRepository
+import com.pixelpals.backend.repository.PlatformRepository;
 import com.pixelpals.backend.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -13,6 +13,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.pixelpals.backend.enumeration.SkillLevel;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -27,14 +30,33 @@ public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
-    private final PlatformRepository platformRepository; // <-- NUOVO: Inietta PlatformRepository
+    private final PlatformRepository platformRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CloudinaryService cloudinaryService; // Dichiarazione
 
-    public UserService(UserRepository userRepository, GameRepository gameRepository, PlatformRepository platformRepository, PasswordEncoder passwordEncoder) {
+    // COSTRUTTORE AGGIORNATO: INIETTARE CloudinaryService
+    public UserService(UserRepository userRepository, GameRepository gameRepository,
+                       PlatformRepository platformRepository, PasswordEncoder passwordEncoder,
+                       CloudinaryService cloudinaryService) { // Aggiunto CloudinaryService qui
         this.userRepository = userRepository;
         this.gameRepository = gameRepository;
-        this.platformRepository = platformRepository; // <-- NUOVO: Inizializza
+        this.platformRepository = platformRepository;
         this.passwordEncoder = passwordEncoder;
+        this.cloudinaryService = cloudinaryService; // INIZIALIZZAZIONE!
+    }
+
+    // NUOVO METODO: Aggiorna l'avatar dell'utente con la URL fornita
+    public User updateAvatarUrl(String identifier, String avatarUrl) {
+        User user = userRepository.findByEmail(identifier)
+                .or(() -> userRepository.findByUsername(identifier))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        user.setAvatarUrl(avatarUrl);
+        return userRepository.save(user);
+    }
+    // NUOVO METODO: Gestisce l'upload del file avatar e aggiorna l'URL
+    public User uploadAndSetAvatar(String identifier, MultipartFile file) throws IOException {
+        String imageUrl = cloudinaryService.uploadFile(file); // Carica il file
+        return updateAvatarUrl(identifier, imageUrl); // Aggiorna l'utente con la nuova URL
     }
 
     @Override
@@ -76,7 +98,6 @@ public class UserService implements UserDetailsService {
         return userRepository.save(user);
     }
 
-
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
@@ -113,18 +134,13 @@ public class UserService implements UserDetailsService {
                 .filter(g -> gameNames.contains(g.getName()))
                 .collect(Collectors.toList());
 
-        // Se la lista di nomi di giochi è vuota, potresti voler svuotare i giochi preferiti dell'utente
-        // o non fare nulla. Qui, se la lista è vuota, non aggiorniamo i giochi preferiti.
-        // Se vuoi permettere di svuotare, cambia la condizione.
-        // if (games.isEmpty() && !gameNames.isEmpty()) { user.setPreferredGames(Collections.emptyList()); }
-        if (games.isEmpty() && !gameNames.isEmpty()) return false; // Se non trovo giochi ma la lista non è vuota, errore.
+        if (games.isEmpty() && !gameNames.isEmpty()) return false;
 
         user.setPreferredGames(games);
         userRepository.save(user);
         return true;
     }
 
-    // <-- NUOVO METODO: updatePlatforms
     public boolean updatePlatforms(String identifier, List<String> platformNames) {
         User user = userRepository.findByEmail(identifier)
                 .or(() -> userRepository.findByUsername(identifier))
@@ -134,14 +150,12 @@ public class UserService implements UserDetailsService {
                 .filter(p -> platformNames.contains(p.getName()))
                 .collect(Collectors.toList());
 
-        // Simile a updatePreferredGames, decidi il comportamento per lista vuota
         if (platforms.isEmpty() && !platformNames.isEmpty()) return false;
 
         user.setPlatforms(platforms);
         userRepository.save(user);
         return true;
     }
-    // NUOVO METODO: updatePlatforms -->
 
     public boolean updateSkillLevels(String identifier, Map<String, String> skillLevels) {
         User user = userRepository.findByEmail(identifier)
@@ -160,21 +174,19 @@ public class UserService implements UserDetailsService {
         } catch (IllegalArgumentException e) {
             return false;
         }
-
     }
+
     public User updateUserFields(User user, Map<String, Object> updates) {
-        // Crea una copia modificabile della mappa degli aggiornamenti
         Map<String, Object> filteredUpdates = new HashMap<>(updates);
 
-        // Rimuovi i campi che non devono essere modificati tramite questo metodo
         filteredUpdates.remove("id");
-        filteredUpdates.remove("isOnline"); // Rimozione per il nome del campo nell'entità
-        filteredUpdates.remove("online");   // Rimozione per il nome del campo nel DTO
-        filteredUpdates.remove("preferredGames"); // Gestito da updatePreferredGames
-        filteredUpdates.remove("platforms"); // Gestito da updatePlatforms
-        filteredUpdates.remove("skillLevelMap"); // Gestito da updateSkillLevels
-        filteredUpdates.remove("availability"); // Gestito da updateAvailability
-
+        filteredUpdates.remove("isOnline");
+        filteredUpdates.remove("online");
+        filteredUpdates.remove("preferredGames");
+        filteredUpdates.remove("platforms");
+        filteredUpdates.remove("skillLevelMap");
+        filteredUpdates.remove("availability");
+        filteredUpdates.remove("avatarUrl"); // Rimosso anche qui per coerenza con il nuovo endpoint dedicato
 
         filteredUpdates.forEach((key, value) -> {
             switch (key) {
@@ -196,8 +208,8 @@ public class UserService implements UserDetailsService {
                     user.setEmail(newEmail);
                 }
 
-                case "avatarUrl" -> user.setAvatarUrl((String) value);
-
+                // Il caso "avatarUrl" è stato rimosso da qui. Sarà gestito dai metodi specifici:
+                // updateAvatarUrl (per URL dirette) e uploadAndSetAvatar (per upload di file).
                 case "bio" -> user.setBio((String) value);
 
                 case "level" -> {
@@ -225,7 +237,6 @@ public class UserService implements UserDetailsService {
                 }
 
                 case "password" -> {
-                    // La password viene hashata qui se è stata fornita una nuova password
                     String rawPassword = (String) value;
                     if (rawPassword != null && !rawPassword.isEmpty()) {
                         user.setPassword(passwordEncoder.encode(rawPassword));
@@ -241,6 +252,7 @@ public class UserService implements UserDetailsService {
 
         return userRepository.save(user);
     }
+
     public void setUserOnlineStatus(String userId, boolean status) {
         userRepository.findById(userId).ifPresent(user -> {
             user.setOnline(status);

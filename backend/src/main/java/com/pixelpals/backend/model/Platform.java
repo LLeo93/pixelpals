@@ -1,3 +1,4 @@
+
 package com.pixelpals.backend.model;
 
 import lombok.AllArgsConstructor;
@@ -14,5 +15,11 @@ public class Platform {
     @Id
     private String id;
     private String name;
-    private String iconUrl;
+    private String iconUrl; // Manteniamo 'iconUrl' come da te specificato
+
+    // Costruttore aggiuntivo per facilitare l'inizializzazione nel DataInitializer/DataLoader
+    public Platform(String name, String iconUrl) {
+        this.name = name;
+        this.iconUrl = iconUrl;
+    }
 }

@@ -15,6 +15,7 @@ import {
   faLevelUpAlt,
   faAward,
   faCheck,
+  faUpload, // Aggiunto l'icona per l'upload
 } from '@fortawesome/free-solid-svg-icons';
 
 const ProfilePage = () => {
@@ -25,6 +26,10 @@ const ProfilePage = () => {
   const [message, setMessage] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
+
+  // States per upload avatar
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // States for games, platforms, and skills management
   const [allGames, setAllGames] = useState([]);
@@ -61,11 +66,10 @@ const ProfilePage = () => {
         setPreferredGames(userData.preferredGames.map((g) => g.id));
         const initialSkills = {};
         if (userData.skillLevelMap) {
+          // Si basa su gameName, quindi devo trovare l'ID del gioco corrispondente
+          // Assicurati che allGames sia popolato prima di questa logica
           for (const gameName in userData.skillLevelMap) {
-            // Find the game ID by name from allGames (will be populated by fetchAllGamesAndPlatforms)
-            // This might cause a slight delay if allGames is not yet fetched,
-            // but the data will eventually reconcile.
-            const game = allGames.find((g) => g.name === gameName);
+            const game = allGames.find((g) => g.name === gameName); // Trova il gioco per nome
             if (game) {
               initialSkills[game.id] = userData.skillLevelMap[gameName];
             }
@@ -114,10 +118,53 @@ const ProfilePage = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  // Nuovo handler per la selezione del file avatar
+  const handleFileChange = (event) => {
+    setSelectedFile(event.target.files[0]);
+  };
+
+  // Nuovo handler per l'upload dell'avatar via file
+  const handleUploadAvatar = async () => {
+    if (!selectedFile) {
+      setError('Seleziona un file da caricare.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setMessage('');
+    setError('');
+
+    const formData = new FormData();
+    formData.append('file', selectedFile); // 'file' deve corrispondere a @RequestParam("file") nel backend
+
+    try {
+      const response = await axiosWithAuth.post(
+        '/users/me/avatar/upload',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data', // Cruciale per l'upload di file
+          },
+        }
+      );
+      setUser(response.data); // Aggiorna l'utente nel frontend con la nuova URL dell'avatar
+      setFormData((prev) => ({ ...prev, avatarUrl: response.data.avatarUrl })); // Aggiorna formData
+      setSelectedFile(null); // Resetta il file selezionato
+      setMessage('Avatar caricato con successo!');
+    } catch (err) {
+      console.error("Errore durante l'upload dell'avatar:", err);
+      setError("Errore durante l'upload dell'avatar.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleEditClick = () => {
     setIsEditing(true);
     setMessage('');
     setError('');
+    // Resetta selectedFile quando si apre il modale di modifica
+    setSelectedFile(null);
   };
 
   const handleCancelEdit = () => {
@@ -152,16 +199,18 @@ const ProfilePage = () => {
     }
     setError('');
     setMessage('');
+    setSelectedFile(null); // Resetta il file selezionato anche al cancel
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
-    setLoading(true);
+    setLoading(true); // Imposta loading per l'operazione di salvataggio generale
 
     try {
-      // Update basic user fields
+      // Update basic user fields (excluding avatarUrl if using file upload,
+      // but it's okay to send it if it's just the current one or manually set)
       await axiosWithAuth.put('/auth/me/update', formData);
 
       // Prepare data for preferredGames
@@ -415,12 +464,81 @@ const ProfilePage = () => {
                   onChange={handleChange}
                   type="email"
                 />
-                <Input
-                  label="Avatar URL"
-                  name="avatarUrl"
-                  value={formData.avatarUrl}
-                  onChange={handleChange}
-                />
+
+                {/* Sezione Caricamento Avatar */}
+                <section className="bg-gray-700 bg-opacity-70 p-6 rounded-lg border border-gray-600 shadow-md">
+                  <h2 className="text-xl font-bold text-blue-400 font-oxanium mb-3 flex items-center">
+                    <FontAwesomeIcon icon={faUserCircle} className="mr-2" />{' '}
+                    Cambia Avatar
+                  </h2>
+                  {/* Anteprima Avatar Corrente */}
+                  <div className="flex items-center space-x-4 mb-4">
+                    <img
+                      src={
+                        formData.avatarUrl ||
+                        `https://placehold.co/80x80/3B82F6/FFFFFF?text=${user.username
+                          .charAt(0)
+                          .toUpperCase()}`
+                      }
+                      alt="Avatar Corrente"
+                      className="w-20 h-20 rounded-full object-cover border-2 border-blue-500"
+                    />
+                    <p className="text-gray-300 text-sm truncate max-w-xs">
+                      URL Corrente: {formData.avatarUrl || 'Nessun URL'}
+                    </p>
+                  </div>
+
+                  {/* Input per URL Avatar */}
+                  <Input
+                    label="URL Avatar (opzionale)"
+                    name="avatarUrl"
+                    value={formData.avatarUrl}
+                    onChange={handleChange}
+                    placeholder="Incolla l'URL dell'immagine qui"
+                  />
+
+                  <div className="my-4 text-center text-gray-400">
+                    — OPPURE —
+                  </div>
+
+                  {/* Input per Caricamento File Avatar */}
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Carica Immagine Avatar
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="block w-full text-sm text-gray-400
+                               file:mr-4 file:py-2 file:px-4
+                               file:rounded-full file:border-0
+                               file:text-sm file:font-semibold
+                               file:bg-purple-500 file:text-white
+                               hover:file:bg-purple-600 mb-3"
+                  />
+                  {selectedFile && (
+                    <p className="text-sm text-gray-300 mb-2">
+                      File selezionato:{' '}
+                      <span className="font-semibold">{selectedFile.name}</span>
+                    </p>
+                  )}
+                  <button
+                    type="button" // Importante: non submitta il form
+                    onClick={handleUploadAvatar}
+                    disabled={uploadingAvatar || !selectedFile}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded
+                               disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition duration-200"
+                  >
+                    <FontAwesomeIcon icon={faUpload} className="mr-2" />
+                    {uploadingAvatar ? 'Caricamento...' : 'Carica Avatar'}
+                  </button>
+                  {uploadingAvatar && (
+                    <p className="text-center text-sm text-blue-300 mt-2">
+                      Attendere, upload in corso...
+                    </p>
+                  )}
+                </section>
+
                 <Textarea
                   label="Bio"
                   name="bio"
@@ -593,7 +711,14 @@ const ProfilePage = () => {
 };
 
 // Componenti riutilizzabili (Input, Textarea, Alert)
-const Input = ({ label, name, value, onChange, type = 'text' }) => (
+const Input = ({
+  label,
+  name,
+  value,
+  onChange,
+  type = 'text',
+  placeholder = '',
+}) => (
   <div>
     <label className="block text-sm font-medium text-gray-300 mb-1">
       {label}
@@ -603,6 +728,7 @@ const Input = ({ label, name, value, onChange, type = 'text' }) => (
       value={value}
       onChange={onChange}
       type={type}
+      placeholder={placeholder}
       className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
     />
   </div>
