@@ -22,11 +22,14 @@ public class User implements UserDetails {
     private String avatarUrl;
     private String bio;
     private int level;
-    private double rating;
+    private double rating; // Rating medio
     private boolean isOnline;
     private boolean verified = false; // Questo campo controlla l'abilitazione
     private String verificationToken;
-    private Date tokenExpirationDate; // NUOVO CAMPO per la data di scadenza del token
+    private Date tokenExpirationDate;
+    private double totalRatingPoints; // Somma di tutti i rating ricevuti
+    private int numberOfRatings;      // Numero di rating ricevuti
+    private int matchesPlayed;
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         String effectiveRole = (role == null || role.trim().isEmpty()) ? "ROLE_USER" : role;
@@ -61,4 +64,32 @@ public class User implements UserDetails {
     private Map<String, SkillLevel> skillLevelMap = new HashMap<>();
     @DBRef
     private List<Badge> badges = new ArrayList<>();
+
+    // NUOVO METODO: Per aggiungere un rating e aggiornare il rating medio dell'utente
+    public void addRating(int newRating) {
+        this.totalRatingPoints += newRating;
+        this.numberOfRatings++;
+        // Calcola il nuovo rating medio
+        if (this.numberOfRatings > 0) {
+            this.rating = this.totalRatingPoints / this.numberOfRatings;
+        } else {
+            this.rating = 0.0; // Nessun rating, imposta a 0
+        }
+    }
+    // NUOVO METODO: Per incrementare il contatore delle partite giocate e aggiornare il livello
+    public void incrementMatchesPlayed() {
+        this.matchesPlayed++;
+        updateLevel(); // Aggiorna il livello dopo aver incrementato le partite giocate
+    }
+
+    // NUOVO METODO: Logica per aggiornare il livello in base alle partite giocate
+    private void updateLevel() {
+        // Esempio di logica di livellamento: 1 livello ogni 5 partite
+        // Puoi personalizzare questa formula come preferisci
+        if (this.matchesPlayed > 0) {
+            this.level = (int) Math.floor(this.matchesPlayed / 5.0) + 1;
+        } else {
+            this.level = 0; // Livello iniziale
+        }
+    }
 }

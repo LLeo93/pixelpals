@@ -4,6 +4,7 @@ import com.pixelpals.backend.dto.GameMatchRequestDTO;
 import com.pixelpals.backend.dto.MatchDetailsDTO;
 import com.pixelpals.backend.dto.MatchRequestDTO;
 import com.pixelpals.backend.dto.MatchedUserDTO;
+import com.pixelpals.backend.dto.RatingRequestDTO; // Importa il nuovo DTO
 import com.pixelpals.backend.model.User;
 import com.pixelpals.backend.service.MatchService;
 import com.pixelpals.backend.service.UserService;
@@ -36,7 +37,6 @@ public class MatchController {
         }
     }
 
-    // Modificato da @GetMapping a @PostMapping per supportare le richieste POST dal frontend
     @PostMapping("/find")
     public ResponseEntity<List<MatchedUserDTO>> findMatches(@RequestBody MatchRequestDTO request, @AuthenticationPrincipal UserDetails userDetails) {
         String currentUsername = userDetails.getUsername();
@@ -60,11 +60,9 @@ public class MatchController {
         try {
             String userId = ((User) userDetails).getId();
 
-            // --- DEBUG LOGS AGGIUNTI ---
             System.out.println("DEBUG in MatchController.acceptGameMatch:");
             System.out.println("  matchId ricevuto da @PathVariable: " + matchId);
             System.out.println("  userId estratto da UserDetails: " + userId);
-            // --- FINE DEBUG LOGS ---
 
             MatchDetailsDTO acceptedMatch = matchService.acceptGameMatch(userId, matchId);
             return ResponseEntity.ok(acceptedMatch);
@@ -79,6 +77,32 @@ public class MatchController {
             String userId = ((User) userDetails).getId();
             MatchDetailsDTO declinedMatch = matchService.declineGameMatch(userId, matchId);
             return ResponseEntity.ok(declinedMatch);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/close/{matchId}")
+    public ResponseEntity<?> closeGameMatch(@PathVariable String matchId, @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            String userId = ((User) userDetails).getId();
+            MatchDetailsDTO closedMatch = matchService.closeGameMatch(userId, matchId);
+            return ResponseEntity.ok(closedMatch);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // NUOVO: Endpoint per sottomettere il rating post-partita
+    @PostMapping("/rate/{matchId}")
+    public ResponseEntity<?> submitMatchRating(
+            @PathVariable String matchId,
+            @RequestBody RatingRequestDTO ratingRequest,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            String userId = ((User) userDetails).getId();
+            MatchDetailsDTO updatedMatch = matchService.submitMatchRating(userId, matchId, ratingRequest);
+            return ResponseEntity.ok(updatedMatch);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
         }

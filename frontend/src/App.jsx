@@ -13,6 +13,7 @@ import ChatPage from './pages/ChatPage';
 import { UnreadMessagesProvider } from './components/UnreadMessagesContext';
 import MatchRoomPage from './pages/MatchRoomPage';
 import PendingMatchesPage from './pages/PendingMatchesPage';
+import RateMatchPage from './pages/RateMatchPage';
 
 function App() {
   // DEVI DEFINIRE currentUserUsername QUI PRIMA DI USARLO
@@ -37,6 +38,7 @@ function App() {
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/pending-matches" element={<PendingMatchesPage />} />
           <Route path="/match-room/:matchId" element={<MatchRoomPage />} />
+          <Route path="/rate-match/:matchId" element={<RateMatchPage />} />
         </Routes>
       </UnreadMessagesProvider>
     </Router>
