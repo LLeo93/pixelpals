@@ -1,3 +1,4 @@
+// src/components/ProfilePage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -15,7 +16,9 @@ import {
   faLevelUpAlt,
   faAward,
   faCheck,
-  faUpload, // Aggiunto l'icona per l'upload
+  faUpload, // Icona per l'upload
+  faTrashAlt, // Icona per la rimozione
+  faKey, // Icona per la password
 } from '@fortawesome/free-solid-svg-icons';
 
 const ProfilePage = () => {
@@ -30,6 +33,7 @@ const ProfilePage = () => {
   // States per upload avatar
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [deletingAvatar, setDeletingAvatar] = useState(false);
 
   // States for games, platforms, and skills management
   const [allGames, setAllGames] = useState([]);
@@ -59,6 +63,8 @@ const ProfilePage = () => {
         bio: userData.bio || '',
         level: userData.level,
         rating: userData.rating,
+        // NON includere la password nel formData qui per motivi di sicurezza
+        // Il campo password sarà gestito separatamente o lasciato vuoto
       });
 
       // Initialize preferred games, platforms, and skill levels from user data
@@ -66,10 +72,8 @@ const ProfilePage = () => {
         setPreferredGames(userData.preferredGames.map((g) => g.id));
         const initialSkills = {};
         if (userData.skillLevelMap) {
-          // Si basa su gameName, quindi devo trovare l'ID del gioco corrispondente
-          // Assicurati che allGames sia popolato prima di questa logica
           for (const gameName in userData.skillLevelMap) {
-            const game = allGames.find((g) => g.name === gameName); // Trova il gioco per nome
+            const game = allGames.find((g) => g.name === gameName);
             if (game) {
               initialSkills[game.id] = userData.skillLevelMap[gameName];
             }
@@ -109,7 +113,6 @@ const ProfilePage = () => {
       setAllPlatforms(platformsRes.data);
     } catch (err) {
       console.error('Errore nel recupero di giochi e piattaforme:', err);
-      // Non impostare un errore grave che blocca il caricamento del profilo
     }
   };
 
@@ -118,12 +121,11 @@ const ProfilePage = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Nuovo handler per la selezione del file avatar
+  // Funzioni per la gestione dell'avatar (upload/delete)
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
   };
 
-  // Nuovo handler per l'upload dell'avatar via file
   const handleUploadAvatar = async () => {
     if (!selectedFile) {
       setError('Seleziona un file da caricare.');
@@ -134,22 +136,22 @@ const ProfilePage = () => {
     setMessage('');
     setError('');
 
-    const formData = new FormData();
-    formData.append('file', selectedFile); // 'file' deve corrispondere a @RequestParam("file") nel backend
+    const avatarFormData = new FormData(); // Usa un nome diverso per evitare confusione
+    avatarFormData.append('file', selectedFile);
 
     try {
       const response = await axiosWithAuth.post(
         '/users/me/avatar/upload',
-        formData,
+        avatarFormData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data', // Cruciale per l'upload di file
+            'Content-Type': 'multipart/form-data',
           },
         }
       );
-      setUser(response.data); // Aggiorna l'utente nel frontend con la nuova URL dell'avatar
-      setFormData((prev) => ({ ...prev, avatarUrl: response.data.avatarUrl })); // Aggiorna formData
-      setSelectedFile(null); // Resetta il file selezionato
+      setUser(response.data);
+      setFormData((prev) => ({ ...prev, avatarUrl: response.data.avatarUrl }));
+      setSelectedFile(null);
       setMessage('Avatar caricato con successo!');
     } catch (err) {
       console.error("Errore durante l'upload dell'avatar:", err);
@@ -159,12 +161,44 @@ const ProfilePage = () => {
     }
   };
 
+  const handleDeleteAvatar = async () => {
+    if (!user.avatarUrl) {
+      setError("Non c'è un avatar da rimuovere.");
+      return;
+    }
+
+    if (!window.confirm('Sei sicuro di voler rimuovere il tuo avatar?')) {
+      return;
+    }
+
+    setDeletingAvatar(true);
+    setMessage('');
+    setError('');
+
+    try {
+      const response = await axiosWithAuth.delete('/users/me/avatar');
+      setUser(response.data);
+      setFormData((prev) => ({
+        ...prev,
+        avatarUrl: response.data.avatarUrl || '',
+      }));
+      setMessage('Avatar rimosso con successo!');
+      setSelectedFile(null);
+    } catch (err) {
+      console.error("Errore durante la rimozione dell'avatar:", err);
+      setError("Errore durante la rimozione dell'avatar.");
+    } finally {
+      setDeletingAvatar(false);
+    }
+  };
+
   const handleEditClick = () => {
     setIsEditing(true);
     setMessage('');
     setError('');
-    // Resetta selectedFile quando si apre il modale di modifica
-    setSelectedFile(null);
+    setSelectedFile(null); // Resetta il file selezionato
+    // Non resetta formData.password qui, ma assicurati che non sia mai mostrato
+    // e che venga sovrascritto solo se l'utente digita
   };
 
   const handleCancelEdit = () => {
@@ -178,6 +212,7 @@ const ProfilePage = () => {
         bio: user.bio || '',
         level: user.level,
         rating: user.rating,
+        // Non includere la password qui per il reset
       });
       // Reset game/platform/skill selections
       setPreferredGames(
@@ -199,19 +234,34 @@ const ProfilePage = () => {
     }
     setError('');
     setMessage('');
-    setSelectedFile(null); // Resetta il file selezionato anche al cancel
+    setSelectedFile(null);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
-    setLoading(true); // Imposta loading per l'operazione di salvataggio generale
+    setLoading(true);
 
     try {
-      // Update basic user fields (excluding avatarUrl if using file upload,
-      // but it's okay to send it if it's just the current one or manually set)
-      await axiosWithAuth.put('/auth/me/update', formData);
+      // Clona formData per non modificare lo stato direttamente e per rimuovere password se vuota
+      const dataToSend = { ...formData };
+
+      // Se il campo password è vuoto, non inviarlo affatto
+      // Se era già presente nel formData originale ma non modificato, non verrà inviato.
+      // Se l'utente lo ha svuotato, lo rimuoviamo per non inviare una stringa vuota.
+      if (dataToSend.password === '') {
+        delete dataToSend.password;
+      }
+
+      // La validazione della password (es. lunghezza, corrispondenza) dovrebbe essere nel backend.
+      // Qui ci limitiamo a non inviarla se è vuota.
+      // Se il backend si aspetta 'newPassword' e 'confirmPassword' separati,
+      // dovrai aggiungere due stati separati come nella mia precedente risposta.
+      // Per il momento, assumo che il backend gestisca un singolo campo 'password'.
+
+      // Update basic user fields including password if provided
+      await axiosWithAuth.put('/auth/me/update', dataToSend);
 
       // Prepare data for preferredGames
       const gameNamesToSend = allGames
@@ -246,7 +296,11 @@ const ProfilePage = () => {
       fetchUserProfile(); // Ricarica i dati per visualizzare le modifiche
     } catch (err) {
       console.error('Errore nel salvataggio del profilo:', err);
-      setError("Errore durante l'aggiornamento del profilo. Riprova.");
+      if (err.response && err.response.data && err.response.data.message) {
+        setError(err.response.data.message);
+      } else {
+        setError("Errore durante l'aggiornamento del profilo. Riprova.");
+      }
     } finally {
       setLoading(false);
     }
@@ -465,7 +519,7 @@ const ProfilePage = () => {
                   type="email"
                 />
 
-                {/* Sezione Caricamento Avatar */}
+                {/* Sezione Caricamento/Cancellazione Avatar */}
                 <section className="bg-gray-700 bg-opacity-70 p-6 rounded-lg border border-gray-600 shadow-md">
                   <h2 className="text-xl font-bold text-blue-400 font-oxanium mb-3 flex items-center">
                     <FontAwesomeIcon icon={faUserCircle} className="mr-2" />{' '}
@@ -523,7 +577,7 @@ const ProfilePage = () => {
                     </p>
                   )}
                   <button
-                    type="button" // Importante: non submitta il form
+                    type="button"
                     onClick={handleUploadAvatar}
                     disabled={uploadingAvatar || !selectedFile}
                     className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded
@@ -537,6 +591,42 @@ const ProfilePage = () => {
                       Attendere, upload in corso...
                     </p>
                   )}
+
+                  {/* Pulsante Rimuovi Avatar - visibile solo se un avatar è presente */}
+                  {user.avatarUrl && (
+                    <div className="mt-4 border-t border-gray-600 pt-4">
+                      <button
+                        type="button"
+                        onClick={handleDeleteAvatar}
+                        disabled={deletingAvatar}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded
+                                   disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition duration-200"
+                      >
+                        <FontAwesomeIcon icon={faTrashAlt} className="mr-2" />
+                        {deletingAvatar ? 'Rimozione...' : 'Rimuovi Avatar'}
+                      </button>
+                    </div>
+                  )}
+                </section>
+
+                {/* Sezione Modifica Password - Reintegrata */}
+                <section className="bg-gray-700 bg-opacity-70 p-6 rounded-lg border border-gray-600 shadow-md">
+                  <h2 className="text-xl font-bold text-orange-400 font-oxanium mb-3 flex items-center">
+                    <FontAwesomeIcon icon={faKey} className="mr-2" /> Cambia
+                    Password
+                  </h2>
+                  <Input
+                    label="Nuova Password"
+                    name="password" // Nome originale del campo
+                    value={formData.password || ''} // Assicurati che sia vuoto all'inizio
+                    onChange={handleChange}
+                    type="password"
+                    placeholder="Lascia vuoto per non cambiare"
+                  />
+                  <p className="text-sm text-gray-400 mt-2">
+                    Compila questo campo solo se vuoi cambiare la tua password.
+                    Il backend gestirà la validazione e la conferma.
+                  </p>
                 </section>
 
                 <Textarea
@@ -639,7 +729,7 @@ const ProfilePage = () => {
 
                 {/* Sezione Piattaforme (simile a SetupProfilePage) */}
                 <section>
-                  <h2 className="text-2xl font-bold text-cyan-400 font-oxanium mb-4 flex items-center">
+                  <h2 className="2xl font-bold text-cyan-400 font-oxanium mb-4 flex items-center">
                     <FontAwesomeIcon icon={faLaptop} className="mr-3" />{' '}
                     PIATTAFORME
                   </h2>

@@ -1,3 +1,4 @@
+// src/main/java/com/pixelpals/backend/config/SecurityConfig.java
 package com.pixelpals.backend.config;
 
 import com.pixelpals.backend.service.JwtAuthFilter;
@@ -7,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider; // <--- Rimettere questa importazione se l'avevi rimossa
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+// import java.util.Collections; // <--- Non necessaria se non usi ProviderManager esplicitamente
 
 @Configuration
 @EnableWebSecurity
@@ -44,9 +46,9 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder);
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(); // <--- TORNA AL COSTRUTTORE SENZA ARGOMENTI
+        authProvider.setUserDetailsService(userDetailsService); // <--- I setter DEPRECATI, ma funzionali
+        authProvider.setPasswordEncoder(passwordEncoder);       // <--- I setter DEPRECATI, ma funzionali
         return authProvider;
     }
 
@@ -75,26 +77,35 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/users/platforms").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/users/skillLevels").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/users/availability").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/users/me/avatar/upload").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/users/me/avatar/url").authenticated()
 
-                        // 3. Endpoint di Gestione Utenti (Solo per ADMIN)
-                        // Questi endpoint tipicamente operano su un {id} specifico o su tutti gli utenti
+                        // 3. Endpoint di Gestione Utenti (Solo per ADMIN o utente stesso per UPDATE)
                         .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/users/{id}").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users/{id}").authenticated()
 
                         // 4. Endpoint Generali per Utenti Autenticati (GET su listi, proprie risorse)
                         // Qui vanno tutti gli endpoint che richiedono autenticazione ma non sono admin-specifici
-                        .requestMatchers(HttpMethod.GET, "/api/users").authenticated() // GET per la ricerca utenti
+                        .requestMatchers(HttpMethod.GET, "/api/users").authenticated()
                         .requestMatchers(
-                                "/api/auth/me/**", // Il proprio profilo loggato
-                                "/api/games", // Lista giochi
-                                "/api/online/users", // Utenti online
-                                "/api/friends/**", // Gestione amicizie
-                                "/api/match/**", // Gestione match
-                                "/api/messages/**" // Messaggistica
+                                "/api/auth/me/**",
+                                "/api/games",
+                                "/api/online/users",
+                                "/api/friends/**",
+                                "/api/platforms/**"
                         ).authenticated()
-                        .anyRequest().authenticated() // Tutte le altre richieste richiedono autenticazione
+
+                        // NUOVI ENDPOINT MATCHING E PARTITE
+                        .requestMatchers(HttpMethod.POST, "/api/matches/find").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/matches/request-game").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/matches/{matchId}/accept").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/matches/{matchId}/decline").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/matches/pending-game-matches").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/matches/accepted-game-matches").authenticated()
+
+                        .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

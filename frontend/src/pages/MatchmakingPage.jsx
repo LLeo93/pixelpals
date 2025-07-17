@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import axiosWithAuth from '../services/axiosWithAuth';
+import Alert from '../components/Alert'; // Importa il componente Alert dal suo file dedicato
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
@@ -11,6 +12,8 @@ import {
   faStar,
   faUsers,
   faUserPlus,
+  faDice, // Nuova icona per la richiesta di partita
+  faHourglassHalf, // Icona per il caricamento
 } from '@fortawesome/free-solid-svg-icons';
 
 const MatchmakingPage = () => {
@@ -24,10 +27,12 @@ const MatchmakingPage = () => {
     maxResults: 10,
   });
   const [matchedUsers, setMatchedUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isSearching, setIsSearching] = useState(false);
+  const [loading, setLoading] = useState(true); // Stato iniziale a true per il caricamento iniziale di giochi/piattaforme
+  const [isSearching, setIsSearching] = useState(false); // Stato separato per la ricerca
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  // Stato per tenere traccia delle richieste di partita inviate (per disabilitare il pulsante)
+  const [sentRequests, setSentRequests] = useState({}); // { userId: true/false }
 
   const skillOptions = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'];
 
@@ -47,7 +52,7 @@ const MatchmakingPage = () => {
           navigate('/');
         }
       } finally {
-        setLoading(false);
+        setLoading(false); // Imposta a false dopo il caricamento iniziale
       }
     };
 
@@ -61,15 +66,23 @@ const MatchmakingPage = () => {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    setIsSearching(true);
+    setIsSearching(true); // Usa isSearching per la ricerca
     setError('');
     setMessage('');
-    setMatchedUsers([]); // Clear previous results
+    setMatchedUsers([]); // Pulisci i risultati precedenti
+    setSentRequests({}); // Pulisci le richieste inviate per una nuova ricerca
 
     try {
+      // Questo endpoint è già /match/find, quindi non ha bisogno di modifiche
       const response = await axiosWithAuth.post('/match/find', searchCriteria);
-      setMatchedUsers(response.data.matchedUsers);
-      setMessage(response.data.message);
+
+      // CORREZIONE QUI: response.data contiene direttamente l'array di MatchedUserDTO
+      if (response.data && response.data.length > 0) {
+        setMatchedUsers(response.data); // Assegna direttamente response.data
+        setMessage('Match trovati!');
+      } else {
+        setMessage('Nessun match trovato con i criteri specificati.');
+      }
     } catch (err) {
       console.error('Errore durante la ricerca match:', err);
       setError(
@@ -77,8 +90,12 @@ const MatchmakingPage = () => {
           err.response?.data?.message || 'Errore sconosciuto.'
         }`
       );
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        localStorage.clear();
+        navigate('/'); // Reindirizza al login in caso di token scaduto/non valido
+      }
     } finally {
-      setIsSearching(false);
+      setIsSearching(false); // Imposta a false dopo la ricerca
     }
   };
 
@@ -88,14 +105,62 @@ const MatchmakingPage = () => {
     try {
       await axiosWithAuth.post(`/friends/request/${username}`);
       setMessage(`Richiesta di amicizia inviata a ${username}!`);
-      // Potresti voler aggiornare lo stato del pulsante o la lista dei risultati dopo l'invio
     } catch (err) {
       console.error('Errore invio richiesta amicizia:', err);
-      setError(
-        `Impossibile inviare richiesta a ${username}: ${
-          err.response?.data?.message || 'Errore sconosciuto.'
-        }`
+      // Modifica qui per gestire il 400 in modo più specifico
+      if (err.response?.status === 400 && err.response?.data?.message) {
+        setError(err.response.data.message); // Mostra il messaggio "Siete già amici."
+      } else {
+        setError(
+          `Impossibile inviare richiesta a ${username}: ${
+            err.response?.data?.message || 'Errore sconosciuto.'
+          }`
+        );
+      }
+    }
+  };
+
+  // Funzione per inviare una richiesta di partita
+  const handleRequestGameMatch = async (receiverId, gameId) => {
+    setError('');
+    setMessage('');
+    setSentRequests((prev) => ({ ...prev, [receiverId]: true })); // Disabilita il pulsante immediatamente
+
+    try {
+      // CORREZIONE QUI: L'endpoint è '/match/request' come nel tuo MatchController
+      const response = await axiosWithAuth.post('/match/request', {
+        receiverId,
+        gameId,
+      });
+      setMessage(
+        `Richiesta di partita inviata a ${
+          matchedUsers.find((u) => u.id === receiverId)?.username
+        } per ${
+          allGames.find((g) => g.id === gameId)?.name
+        }! In attesa di accettazione...`
       );
+      console.log('Richiesta partita inviata:', response.data);
+
+      // Potresti voler reindirizzare o mostrare un modal qui
+      // Esempio: reindirizza a una pagina di "Match in attesa" o mostra un modal
+      // navigate(`/match-pending/${response.data.id}`);
+    } catch (err) {
+      console.error('Errore invio richiesta partita:', err);
+      // Gestione specifica per l'errore 401
+      if (err.response?.status === 401) {
+        setError(
+          'Non sei autorizzato a inviare richieste di partita. Potrebbe essere un problema di sessione o permessi.'
+        );
+        localStorage.clear(); // Forse la sessione è scaduta
+        navigate('/'); // Reindirizza al login
+      } else {
+        setError(
+          `Impossibile inviare richiesta di partita: ${
+            err.response?.data?.message || 'Errore sconosciuto.'
+          }`
+        );
+      }
+      setSentRequests((prev) => ({ ...prev, [receiverId]: false })); // Riabilita in caso di errore
     }
   };
 
@@ -237,7 +302,21 @@ const MatchmakingPage = () => {
             </section>
 
             {/* Sezione Risultati Matchmaking */}
-            {matchedUsers.length > 0 && (
+            {isSearching && (
+              <p className="text-center text-gray-400 text-lg mt-8">
+                <FontAwesomeIcon
+                  icon={faHourglassHalf}
+                  className="mr-2 animate-spin"
+                />
+                Ricerca in corso...
+              </p>
+            )}
+            {!isSearching && matchedUsers.length === 0 && !error && message && (
+              <p className="text-center text-gray-400 text-lg mt-8">
+                {message}
+              </p>
+            )}
+            {!isSearching && matchedUsers.length > 0 && (
               <section className="bg-gray-800 bg-opacity-90 p-6 rounded-xl shadow-2xl border border-green-700">
                 <h2 className="text-2xl font-bold text-lime-400 font-oxanium mb-4 flex items-center">
                   <FontAwesomeIcon icon={faUsers} className="mr-3" /> PIXELPALS
@@ -268,7 +347,7 @@ const MatchmakingPage = () => {
                       </p>
 
                       <div className="text-center text-gray-400 text-xs mb-3">
-                        {user.online ? (
+                        {user.isOnline ? ( // Correzione: usa user.isOnline
                           <span className="text-green-400">Online</span>
                         ) : (
                           <span className="text-red-400">Offline</span>
@@ -334,40 +413,49 @@ const MatchmakingPage = () => {
                         <FontAwesomeIcon icon={faUserPlus} className="mr-2" />{' '}
                         Aggiungi Amico
                       </button>
+
+                      {/* NUOVO: Pulsante per inviare richiesta di partita */}
+                      {searchCriteria.gameName && ( // Mostra solo se un gioco è selezionato
+                        <button
+                          onClick={() =>
+                            handleRequestGameMatch(
+                              user.id,
+                              allGames.find(
+                                (g) => g.name === searchCriteria.gameName
+                              )?.id // Passa l'ID del gioco selezionato
+                            )
+                          }
+                          disabled={
+                            !searchCriteria.gameName || sentRequests[user.id]
+                          } // Disabilita se nessun gioco o richiesta già inviata
+                          className="mt-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-5 rounded-md transition duration-200 flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <FontAwesomeIcon icon={faDice} className="mr-2" />{' '}
+                          {sentRequests[user.id]
+                            ? 'Richiesta Inviata'
+                            : 'Richiedi Partita'}
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
               </section>
             )}
 
-            {matchedUsers.length === 0 && isSearching && !loading && !error && (
-              <p className="text-center text-gray-400 text-lg mt-8">
-                Nessun PixelPal trovato con i criteri specificati. Prova a
-                modificare la ricerca!
-              </p>
-            )}
+            {!isSearching &&
+              matchedUsers.length === 0 &&
+              !loading &&
+              !error && (
+                <p className="text-center text-gray-400 text-lg mt-8">
+                  Nessun PixelPal trovato con i criteri specificati. Prova a
+                  modificare la ricerca!
+                </p>
+              )}
           </div>
         </main>
       </div>
       <Footer />
     </>
-  );
-};
-
-// Componente Alert (copiato da altre pagine per coerenza)
-const Alert = ({ type, message }) => {
-  const base =
-    type === 'success'
-      ? 'bg-green-900 border-green-700 text-green-300'
-      : 'bg-red-900 border-red-700 text-red-300';
-  return (
-    <div
-      className={`relative z-50 border px-4 py-3 rounded mb-4 ${base}`}
-      role="alert"
-      aria-live="polite"
-    >
-      {type === 'success' ? '✅' : '❌'} {message}
-    </div>
   );
 };
 

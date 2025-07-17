@@ -108,6 +108,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
                 System.out.println("DEBUG JwtAuthFilter: Authentication set for user: " + username);
+                System.out.println("DEBUG JwtAuthFilter: SecurityContextHolder authentication after setting: " + SecurityContextHolder.getContext().getAuthentication());
             }
         } else {
             System.out.println("DEBUG JwtAuthFilter: SecurityContext already has authentication. Skipping JWT processing.");

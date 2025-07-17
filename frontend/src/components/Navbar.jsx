@@ -1,5 +1,4 @@
-// frontend/src/components/Navbar.jsx
-import React, { useState, useEffect, useContext } from 'react'; // Aggiunto useContext e useEffect
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -9,8 +8,10 @@ import {
   faUserFriends,
   faUsers,
   faComments,
+  faHourglassHalf,
 } from '@fortawesome/free-solid-svg-icons';
 import { UnreadMessagesContext } from './UnreadMessagesContext';
+
 const Navbar = () => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -86,6 +87,18 @@ const Navbar = () => {
                   {totalUnreadCount}
                 </span>
               )}
+            </a>
+          )}
+          {/* NUOVO LINK PER LE RICHIESTE DI PARTITA PENDENTI */}
+          {isLoggedIn && (
+            <a
+              href="/pending-matches"
+              className="relative text-white hover:text-gray-300 transition duration-300"
+            >
+              <FontAwesomeIcon icon={faHourglassHalf} className="mr-1" />
+              Richieste Partita
+              {/* Potresti aggiungere un badge di notifica qui per le richieste di partita pendenti */}
+              {/* Esempio: {pendingMatchRequestsCount > 0 && ( ... )} */}
             </a>
           )}
           {userRole === 'ROLE_ADMIN' && isLoggedIn && (
@@ -165,6 +178,18 @@ const Navbar = () => {
                   {totalUnreadCount}
                 </span>
               )}
+            </a>
+          )}
+          {/* NUOVO LINK PER LE RICHIESTE DI PARTITA PENDENTI (MOBILE) */}
+          {isLoggedIn && (
+            <a
+              href="/pending-matches"
+              className="relative block text-white hover:text-gray-300 transition duration-300 px-3 py-2 rounded-md"
+            >
+              <FontAwesomeIcon icon={faHourglassHalf} className="mr-1" />
+              Richieste Partita
+              {/* Potresti aggiungere un badge di notifica qui per le richieste di partita pendenti */}
+              {/* Esempio: {pendingMatchRequestsCount > 0 && ( ... )} */}
             </a>
           )}
           {userRole === 'ROLE_ADMIN' && isLoggedIn && (

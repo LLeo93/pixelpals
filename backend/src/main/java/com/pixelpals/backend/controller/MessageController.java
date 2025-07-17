@@ -14,10 +14,10 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Date; // Assicurati di avere questo import
 
 @RestController
 @RequestMapping("/api/messages")
@@ -35,11 +35,28 @@ public class MessageController {
                     .orElseThrow(() -> new RuntimeException("Utente corrente non trovato."));
             String user1Id = currentUser.getId();
 
-            List<MessageDTO> messages = messageService.getChatHistory(user1Id, user2Id);
+            List<MessageDTO> messages = messageService.getChatHistoryBetweenUsers(user1Id, user2Id);
             return ResponseEntity.ok(messages);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Errore nel recupero della cronologia chat: " + e.getMessage()));
+        }
+    }
+
+    // NUOVO ENDPOINT: Per ottenere la cronologia della chat di un match specifico
+    @GetMapping("/match/{matchId}/history")
+    public ResponseEntity<?> getMatchChatHistory(@PathVariable String matchId, Principal principal) {
+        try {
+            // Non è strettamente necessario recuperare l'utente qui se il servizio gestisce la sicurezza
+            // ma è buona pratica per la validazione o logica specifica dell'utente.
+            // User currentUser = userService.getUserByUsername(principal.getName())
+            //         .orElseThrow(() -> new RuntimeException("Utente corrente non trovato."));
+
+            List<MessageDTO> messages = messageService.getChatHistoryForMatch(matchId);
+            return ResponseEntity.ok(messages);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Errore nel recupero della cronologia chat del match: " + e.getMessage()));
         }
     }
 
@@ -51,7 +68,7 @@ public class MessageController {
 
         messageDTO.setSenderId(sender.getId());
         messageDTO.setSenderUsername(sender.getUsername());
-        messageDTO.setTimestamp(Date.from(java.time.Instant.now()));
+        messageDTO.setTimestamp(LocalDateTime.now());
 
         MessageDTO savedMessage = messageService.sendMessage(messageDTO);
         System.out.println("Messaggio ricevuto e salvato: " + savedMessage.getContent() + " da " + savedMessage.getSenderUsername());
@@ -60,22 +77,31 @@ public class MessageController {
         messagingTemplate.convertAndSend(chatRoomTopic, savedMessage);
         System.out.println("Messaggio inoltrato al topic: " + chatRoomTopic);
 
-        // Non è più necessario inviare alla coda privata qui, poiché il MessageService
-        // si occupa già di inviare l'aggiornamento del conteggio non letto al destinatario.
-        // Se si vuole anche il messaggio completo sulla coda privata, allora si può tenere.
-        // if (savedMessage.getReceiverUsername() != null && !savedMessage.getReceiverUsername().isEmpty()) {
-        //     messagingTemplate.convertAndSendToUser(
-        //            savedMessage.getReceiverUsername(), "/queue/messages", savedMessage);
-        // }
+        if (savedMessage.getReceiverId() != null) {
+            int totalUnread = messageService.getTotalUnreadCount(savedMessage.getReceiverId());
+            Map<String, Integer> unreadCountsPerChat = messageService.getUnreadCountsPerChat(savedMessage.getReceiverId());
+
+            Map<String, Object> updatePayload = new HashMap<>();
+            updatePayload.put("totalUnreadCount", totalUnread);
+            updatePayload.put("unreadCountsPerChat", unreadCountsPerChat);
+            updatePayload.put("chatRoomId", savedMessage.getChatRoomId());
+
+            messagingTemplate.convertAndSendToUser(
+                    userService.getUserById(savedMessage.getReceiverId()).orElseThrow().getUsername(),
+                    "/queue/unread-updates",
+                    updatePayload
+            );
+            System.out.println("Inviato aggiornamento non letto a " + savedMessage.getReceiverUsername() + ": " + updatePayload);
+        }
     }
 
-    @MessageMapping("/chat.addUser")
-    public void addUser(@Payload MessageDTO messageDTO, SimpMessageHeaderAccessor headerAccessor) {
-        headerAccessor.getSessionAttributes().put("username", messageDTO.getSenderUsername());
-        System.out.println("DEBUG: Utente " + messageDTO.getSenderUsername() + " aggiunto alla sessione WebSocket.");
-    }
+    // RIMOSSO: Questo metodo è stato spostato in WebSocketController per evitare mapping ambigui.
+    // @MessageMapping("/chat.addUser")
+    // public void addUser(@Payload MessageDTO messageDTO, SimpMessageHeaderAccessor headerAccessor) {
+    //     headerAccessor.getSessionAttributes().put("username", messageDTO.getSenderUsername());
+    //     System.out.println("DEBUG: Utente " + messageDTO.getSenderUsername() + " aggiunto alla sessione WebSocket.");
+    // }
 
-    // NUOVO: Endpoint REST per ottenere il conteggio totale dei messaggi non letti
     @GetMapping("/unread/total")
     public ResponseEntity<Integer> getTotalUnreadCount(Principal principal) {
         try {
@@ -84,11 +110,10 @@ public class MessageController {
             int total = messageService.getTotalUnreadCount(currentUser.getId());
             return ResponseEntity.ok(total);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(0); // O un codice di errore più specifico
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(0);
         }
     }
 
-    // NUOVO: Endpoint REST per ottenere i conteggi non letti per ogni chatroom
     @GetMapping("/unread/per-chat")
     public ResponseEntity<Map<String, Integer>> getUnreadCountsPerChat(Principal principal) {
         try {
@@ -101,13 +126,12 @@ public class MessageController {
         }
     }
 
-    // NUOVO: Endpoint REST per marcare i messaggi di una chat come letti
     @PostMapping("/mark-read/{chatRoomId}")
     public ResponseEntity<Void> markChatAsRead(@PathVariable String chatRoomId, Principal principal) {
         try {
             User currentUser = userService.getUserByUsername(principal.getName())
                     .orElseThrow(() -> new RuntimeException("Utente corrente non trovato."));
-            messageService.markChatAsRead(currentUser.getId(), chatRoomId);
+            messageService.markMessagesAsRead(currentUser.getId(), chatRoomId);
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
