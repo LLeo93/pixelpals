@@ -45,6 +45,14 @@ Costruito con tecnologie all'avanguardia, PixelPals garantisce un'esperienza flu
 - **Google Mail**: Per la gestione delle comunicazioni e le verifiche account.
 - **WebSocket (via STOMP)**: Per una comunicazione **real-time** tra utenti, abilitando la chat e gli aggiornamenti di stato online in modo istantaneo e bidirezionale.
 
+  🚀 Prossimi Sviluppi: Cosa Ci Riserva il Futuro di PixelPals? 🌠
+Siamo costantemente al lavoro per migliorare e espandere l'esperienza di PixelPals. Ecco un'anteprima delle funzionalità che intendiamo implementare nelle prossime iterazioni per rendere la tua connessione con la community ancora più ricca e senza interruzioni:
+
+Integrazione OAuth2 Avanzata: Miglioreremo il processo di login e registrazione introducendo l'autenticazione tramite Discord e Gmail, offrendo un accesso più rapido e sicuro.
+
+Modalità di Recupero Account Sicura: Aggiungeremo funzionalità robuste per il recupero di password e nomi utente, garantendo che tu possa sempre accedere al tuo profilo senza problemi.
+
+Esperienza Social Coerente: Perfezioneremo la visualizzazione dello stato online e la gestione della lista amici su tutte le pagine dell'applicazione, assicurando una coerenza e una reattività in tempo reale, ovunque tu sia su PixelPals.
 ---
 
 Sei pronto a trovare la tua squadra dei sogni? **Accedi o Registrati ora su PixelPals e inizia la tua prossima avventura!** 🎉
