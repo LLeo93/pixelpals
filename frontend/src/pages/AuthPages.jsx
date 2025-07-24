@@ -86,7 +86,7 @@ function AuthPages() {
             PIXELPALS
           </h1>
           <p className="mt-3 text-lg md:text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-green-300 animate-fade-in max-w-2xl mx-auto font-inter">
-            **Connettiti. Gioca. Domina.**
+            **Connettiti. Gioca. Cresci insieme.**
           </p>
         </div>
 
