@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import FriendList from '../components/FriendList';
 import axiosWithAuth from '../services/axiosWithAuth';
-import Alert from '../components/alert';
+import Alert from '../components/Alert';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,

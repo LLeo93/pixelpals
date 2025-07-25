@@ -12,7 +12,7 @@ const FriendList = ({ userToken, username }) => {
   }, []);
   const fetchFriendsStatus = async () => {
     if (!userToken) {
-      console.warn('⚠️ Token utente non disponibile per il polling amici.');
+      console.warn('Token utente non disponibile per il polling amici.');
       setLoading(false);
       return;
     }
@@ -31,7 +31,7 @@ const FriendList = ({ userToken, username }) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(
-          `❌ Errore HTTP durante il fetching degli amici: ${response.status} - ${errorText}`
+          ` Errore HTTP durante il fetching degli amici: ${response.status} - ${errorText}`
         );
         setFriendsData([]);
         setLoading(false);
@@ -45,7 +45,7 @@ const FriendList = ({ userToken, username }) => {
       }
     } catch (error) {
       console.error(
-        '❌ Errore di rete o parsing durante il fetching degli amici:',
+        ' Errore di rete o parsing durante il fetching degli amici:',
         error
       );
       if (isMounted.current) {
@@ -68,7 +68,7 @@ const FriendList = ({ userToken, username }) => {
     }, 5000);
 
     return () => {
-      console.log('🧹 Pulizia intervallo di polling FriendList...');
+      console.log(' Pulizia intervallo di polling FriendList...');
       clearInterval(pollingInterval);
     };
   }, [userToken]);

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosWithAuth from '../services/axiosWithAuth';
+import Swal from 'sweetalert2';
 
 function AuthPages() {
   const [mode, setMode] = useState('login');
@@ -56,10 +57,23 @@ function AuthPages() {
           navigate('/home');
         }
       } else {
-        alert(
-          'Registrazione avvenuta con successo! Controlla la tua email per la verifica. Verrai reindirizzato alla pagina di configurazione del profilo.'
-        );
-        navigate('/setup-profile');
+        Swal.fire({
+          title: 'Registrazione Completata!',
+          text: 'Controlla la tua email per la verifica. Verrai reindirizzato alla pagina di configurazione del profilo.',
+          icon: 'success',
+          confirmButtonText: 'OK',
+          customClass: {
+            popup:
+              'bg-gray-800 border border-purple-700 text-white rounded-xl shadow-2xl',
+            title: 'text-purple-400 font-bold',
+            content: 'text-gray-300',
+            confirmButton:
+              'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 transform hover:scale-105 shadow-lg',
+          },
+          buttonsStyling: false,
+        }).then(() => {
+          navigate('/setup-profile');
+        });
       }
     } catch (err) {
       if (err.response?.data?.message) {
@@ -86,7 +100,7 @@ function AuthPages() {
             PIXELPALS
           </h1>
           <p className="mt-3 text-lg md:text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-green-300 animate-fade-in max-w-2xl mx-auto font-inter">
-            **Connettiti. Gioca. Domina.**
+            **Connettiti. Gioca. Cresci insieme.**
           </p>
         </div>
 

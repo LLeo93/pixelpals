@@ -10,6 +10,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import Swal from 'sweetalert2';
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
@@ -73,18 +74,38 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Sei sicuro di voler eliminare questo utente?')) return;
-
-    try {
-      await axiosWithAuth.delete(`/users/${userId}`);
-      setMsg('Utente eliminato con successo!');
-      fetchUsers();
-    } catch (err) {
-      setError("Errore durante l'eliminazione dell'utente.");
-      if (err.response?.data?.message) {
-        setError(`Errore: ${err.response.data.message}`);
+    Swal.fire({
+      title: 'Sei sicuro?',
+      text: 'Non potrai tornare indietro!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sì, elimina!',
+      cancelButtonText: 'Annulla',
+      customClass: {
+        popup:
+          'bg-gray-800 border border-purple-700 text-white rounded-xl shadow-2xl',
+        title: 'text-purple-400 font-bold',
+        content: 'text-gray-300',
+        confirmButton:
+          'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 transform hover:scale-105 shadow-lg mr-2',
+        cancelButton:
+          'bg-gray-700 hover:bg-gray-600 text-gray-200 font-semibold py-2 px-4 rounded-md transition duration-300',
+      },
+      buttonsStyling: false,
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await axiosWithAuth.delete(`/users/${userId}`);
+          setMsg('Utente eliminato con successo!');
+          fetchUsers();
+        } catch (err) {
+          setError("Errore durante l'eliminazione dell'utente.");
+          if (err.response?.data?.message) {
+            setError(`Errore: ${err.response.data.message}`);
+          }
+        }
       }
-    }
+    });
   };
 
   const handleSaveUser = async (formData) => {

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import axiosWithAuth from '../services/axiosWithAuth';
-import Alert from '../components/alert';
+import Alert from '../components/Alert';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faStar, faPaperPlane } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';

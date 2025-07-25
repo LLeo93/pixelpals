@@ -8,7 +8,7 @@ import VerificationPage from './pages/VerificationPage';
 import AdminDashboard from './pages/AdminDashboard';
 import FriendsPage from './pages/FriendsPage';
 import SetupProfilePage from './pages/SetupProfilePage';
-import MatchmakingPage from './pages/MatchMakingPage';
+import MatchmakingPage from './pages/MatchmakingPage';
 import ChatPage from './pages/ChatPage';
 import { UnreadMessagesProvider } from './components/UnreadMessagesContext';
 import MatchRoomPage from './pages/MatchRoomPage';
