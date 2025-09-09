@@ -12,7 +12,7 @@ COPY .mvn .mvn
 RUN chmod +x mvnw
 
 # Copia il codice sorgente
-COPY
+COPY src ./src
 
 # Installa strumenti utili (opzionale)
 RUN apk add --no-cache bash curl unzip
