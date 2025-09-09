@@ -1,24 +1,27 @@
-# Usa OpenJDK 21 ufficiale
-FROM openjdk:21-jdk-slim
+# Base image con Java 17
+FROM eclipse-temurin:17-jdk-alpine
 
+# Imposta la working directory
 WORKDIR /app
-
-RUN chmod +x mvnw
-RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
 
 # Copia Maven wrapper e configurazioni
 COPY backend/mvnw backend/pom.xml ./
 COPY backend/.mvn .mvn
 
+# Rendi eseguibile mvnw
 RUN chmod +x mvnw
 
-# Copia tutto il resto del backend
+# Copia il codice sorgente
 COPY backend/src ./src
-COPY backend/target ./target
 
-# Build senza usare BuildKit
+# Installa strumenti utili (opzionale)
+RUN apk add --no-cache bash curl unzip
+
+# Build del progetto
 RUN ./mvnw clean package -DskipTests
 
+# Espone la porta
 EXPOSE 8080
 
+# Comando di avvio
 CMD ["java", "-jar", "target/backend-0.0.1-SNAPSHOT.jar"]
