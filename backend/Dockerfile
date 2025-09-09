@@ -3,14 +3,18 @@ FROM openjdk:21-jdk-slim
 
 WORKDIR /app
 
-# Copia Maven wrapper e file essenziali
-COPY mvnw pom.xml ./
-COPY .mvn .mvn
-
 RUN chmod +x mvnw
 RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
 
-COPY backend/ ./
+# Copia Maven wrapper e configurazioni
+COPY backend/mvnw backend/pom.xml ./
+COPY backend/.mvn .mvn
+
+RUN chmod +x mvnw
+
+# Copia tutto il resto del backend
+COPY backend/src ./src
+COPY backend/target ./target
 
 # Build senza usare BuildKit
 RUN ./mvnw clean package -DskipTests
