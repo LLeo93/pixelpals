@@ -1,6 +1,7 @@
 import './App.css';
 import './index.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
 import AuthPages from './pages/AuthPages';
 import ProfilePages from './pages/ProfilePage';
 import HomePage from './pages/HomePage';
@@ -16,7 +17,14 @@ import PendingMatchesPage from './pages/PendingMatchesPage';
 import RateMatchPage from './pages/RateMatchPage';
 import ActiveRoomFloatingButton from './components/ActiveRoomFloatingButton';
 import UserPage from './pages/UserPage';
+
 function App() {
+  useEffect(() => {
+    fetch('https://pixelpals.onrender.com/health')
+      .then((res) => console.log('Backend wake-up ping:', res.status))
+      .catch((err) => console.log('Backend sleeping?', err));
+  }, []);
+
   return (
     <Router>
       <UnreadMessagesProvider>
@@ -44,4 +52,5 @@ function App() {
     </Router>
   );
 }
+
 export default App;
