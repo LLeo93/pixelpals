@@ -1,6 +1,6 @@
 import axios from 'axios';
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: 'curl -i https://pixelpals-qcli.onrender.com/api/users',
 });
 axiosInstance.interceptors.request.use(
   (config) => {
