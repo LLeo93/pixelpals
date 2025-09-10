@@ -11,7 +11,7 @@ import {
   faSpinner,
 } from '@fortawesome/free-solid-svg-icons';
 import { UnreadMessagesContext } from '../components/UnreadMessagesContext';
-import { useSocket } from '../hooks/UseSocket';
+import { useSocket } from '../hooks/useSocket';
 
 const ChatPage = () => {
   const navigate = useNavigate();

@@ -31,7 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
-
+node_modules/
 .env
 .env.local
 backend/env.properties
