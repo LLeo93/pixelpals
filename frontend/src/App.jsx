@@ -20,7 +20,7 @@ import UserPage from './pages/UserPage';
 
 function App() {
   useEffect(() => {
-    fetch('https://pixelpals.onrender.com/health')
+    fetch('https://pixelpals-qcli.onrender.com')
       .then((res) => console.log('Backend wake-up ping:', res.status))
       .catch((err) => console.log('Backend sleeping?', err));
   }, []);
