@@ -14,7 +14,7 @@ public class EmailService {
     public void sendVerificationEmail(User user, String verificationToken) {
         try {
             String subject = "Conferma la tua email";
-            String verificationLink = "http://localhost:3000/verify?token=" + verificationToken;
+            String verificationLink = "https://pixelpals-pous.onrender.com/verify?token=" + verificationToken;
             String content = "Ciao " + user.getUsername() + ",\n\n"
                     + "Conferma il tuo account cliccando il link:\n"
                     + verificationLink + "\n\n"
