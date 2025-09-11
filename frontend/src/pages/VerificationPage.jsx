@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { API_BASE_URL } from '../services/config';
 
 const VerificationPage = () => {
   const location = useLocation();
@@ -25,7 +26,7 @@ const VerificationPage = () => {
 
       try {
         const response = await axios.get(
-          `http://localhost:8080/api/auth/verify-email?token=${token}`
+          `${API_BASE_URL}/auth/verify-email?token=${token}`
         );
 
         if (response.status === 200) {

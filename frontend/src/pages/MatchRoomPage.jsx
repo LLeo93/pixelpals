@@ -16,6 +16,7 @@ import {
 import Swal from 'sweetalert2';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
+import { WS_URL } from '../services/config';
 
 const MatchRoomPage = () => {
   const { matchId } = useParams();
@@ -76,7 +77,7 @@ const MatchRoomPage = () => {
   useEffect(() => {
     if (!matchId || !currentUser) return;
 
-    const socket = new SockJS('http://localhost:8080/ws');
+    const socket = new SockJS(WS_URL);
     stompClient.current = new Client({
       webSocketFactory: () => socket,
       debug: () => {},
