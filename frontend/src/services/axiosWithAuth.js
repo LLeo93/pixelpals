@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from './config.js';
 const axiosInstance = axios.create({
-  baseURL: 'https://pixelpals-qcli.onrender.com/api',
+  baseURL: API_BASE_URL,
 });
 axiosInstance.interceptors.request.use(
   (config) => {

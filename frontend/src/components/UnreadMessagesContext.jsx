@@ -10,10 +10,9 @@ import Stomp from 'stompjs';
 import SockJS from 'sockjs-client';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import { WS_URL } from '../services/config';
 
 export const UnreadMessagesContext = createContext();
-const WS_URL = 'http://localhost:8080/ws';
-
 export const useUnreadMessages = () => useContext(UnreadMessagesContext);
 
 export const UnreadMessagesProvider = ({ children }) => {
@@ -25,10 +24,8 @@ export const UnreadMessagesProvider = ({ children }) => {
   const [matchChatUnreadCount, setMatchChatUnreadCount] = useState(0);
   const [pendingFriendRequestCount, setPendingFriendRequestCount] = useState(0);
 
-  const incrementFriendChat = () => {
+  const incrementFriendChat = () =>
     setFriendChatUnreadCount((prev) => prev + 1);
-  };
-
   const incrementMatchChat = () => setMatchChatUnreadCount((prev) => prev + 1);
   const resetFriendChat = () => setFriendChatUnreadCount(0);
   const resetMatchChat = () => setMatchChatUnreadCount(0);
@@ -85,9 +82,8 @@ export const UnreadMessagesProvider = ({ children }) => {
       setUnreadCountsPerChat({});
       setMatchNotifications([]);
       setPendingFriendRequestCount(0);
-      if (notificationStompClient?.connected) {
+      if (notificationStompClient?.connected)
         notificationStompClient.disconnect();
-      }
       return;
     }
 
@@ -101,34 +97,27 @@ export const UnreadMessagesProvider = ({ children }) => {
       () => {
         setNotificationStompClient(client);
 
+        // Aggiornamenti chat e conteggi
         client.subscribe(
           `/user/${currentUserUsername}/queue/unread-updates`,
           (msg) => {
             const update = JSON.parse(msg.body);
-
-            if (update.totalUnreadCount !== undefined) {
+            if (update.totalUnreadCount !== undefined)
               setTotalUnreadCount(update.totalUnreadCount);
-            }
-
-            if (update.unreadCountsPerChat !== undefined) {
+            if (update.unreadCountsPerChat !== undefined)
               setUnreadCountsPerChat(update.unreadCountsPerChat);
-            } else if (update.chatRoomId && update.unreadCount !== undefined) {
+            else if (update.chatRoomId && update.unreadCount !== undefined) {
               setUnreadCountsPerChat((prev) => ({
                 ...prev,
                 [update.chatRoomId]: update.unreadCount,
               }));
             }
-
-            if (update.type === 'CHAT_FRIEND') {
-              incrementFriendChat();
-            }
-
-            if (update.type === 'CHAT_MATCH') {
-              incrementMatchChat();
-            }
+            if (update.type === 'CHAT_FRIEND') incrementFriendChat();
+            if (update.type === 'CHAT_MATCH') incrementMatchChat();
           }
         );
 
+        // Notifiche match
         client.subscribe(
           `/user/${currentUserUsername}/queue/match-notifications`,
           (msg) => {
@@ -147,12 +136,8 @@ export const UnreadMessagesProvider = ({ children }) => {
                   popup:
                     'bg-gray-800 text-white rounded-lg shadow-xl border border-blue-700',
                   title: 'text-green-400',
-                  confirmButton:
-                    'bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md',
                 },
-              }).then(() => {
-                navigate(`/match-room/${update.matchId}`);
-              });
+              }).then(() => navigate(`/match-room/${update.matchId}`));
             }
 
             if (update.type === 'MATCH_CLOSED' && update.matchId) {
@@ -168,12 +153,8 @@ export const UnreadMessagesProvider = ({ children }) => {
                   popup:
                     'bg-gray-800 text-white rounded-lg shadow-xl border border-blue-700',
                   title: 'text-blue-400',
-                  confirmButton:
-                    'bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md',
                 },
-              }).then(() => {
-                navigate(`/rate-match/${update.matchId}`);
-              });
+              }).then(() => navigate(`/rate-match/${update.matchId}`));
             }
 
             if (update.type === 'MATCH_REQUEST' && update.matchId) {
@@ -206,6 +187,7 @@ export const UnreadMessagesProvider = ({ children }) => {
           }
         );
 
+        // Notifiche amici
         client.subscribe(
           `/user/${currentUserUsername}/queue/friend-requests/new`,
           () => {
@@ -234,15 +216,12 @@ export const UnreadMessagesProvider = ({ children }) => {
     );
 
     return () => {
-      if (client?.connected) {
-        client.disconnect();
-      }
+      if (client?.connected) client.disconnect();
     };
   }, [currentUserUsername, navigate, fetchPendingFriendRequests]);
 
   const markChatAsRead = async (chatRoomId) => {
     if (!currentUserUsername) return;
-
     try {
       await axiosWithAuth.post(`/messages/mark-read/${chatRoomId}`);
       const count = unreadCountsPerChat[chatRoomId] || 0;
@@ -253,7 +232,7 @@ export const UnreadMessagesProvider = ({ children }) => {
         return updated;
       });
 
-      setTotalUnreadCount((prevTotal) => Math.max(0, prevTotal - count));
+      setTotalUnreadCount((prev) => Math.max(0, prev - count));
       setFriendChatUnreadCount((prev) => Math.max(0, prev - count));
     } catch (err) {
       if (err.response?.status === 401 || err.response?.status === 403) {

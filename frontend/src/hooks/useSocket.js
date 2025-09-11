@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { WS_URL } from '../services/config';
 
 export const useSocket = (token) => {
   const [client, setClient] = useState(null);
@@ -24,9 +25,8 @@ export const useSocket = (token) => {
       return;
     }
 
-    const stompClient = Stomp.over(
-      () => new SockJS('http://localhost:8080/ws')
-    );
+    const sock = new SockJS(WS_URL);
+    const stompClient = Stomp.over(sock);
     stompClient.debug = () => {};
     stompClient.connectHeaders = {
       Authorization: `Bearer ${token}`,
@@ -38,25 +38,14 @@ export const useSocket = (token) => {
     stompClient.onStompError = () => {};
     stompClient.onConnect = () => {
       setClient(stompClient);
-      stompClient.reconnectDelay = 1000;
     };
-    stompClient.onDisconnect = () => {};
-    stompClient.onWebSocketClose = () => {};
 
     stompClient.activate();
     socketRef.current = stompClient;
   }, [token]);
 
   useEffect(() => {
-    if (token) {
-      connectWebSocket();
-    } else {
-      if (socketRef.current) {
-        socketRef.current.deactivate();
-      }
-      setClient(null);
-      socketRef.current = null;
-    }
+    connectWebSocket();
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -75,11 +64,11 @@ export const useSocket = (token) => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (socketRef.current) {
         socketRef.current.deactivate();
+        socketRef.current = null;
       }
       setClient(null);
-      socketRef.current = null;
     };
-  }, [token, connectWebSocket]);
+  }, [connectWebSocket]);
 
   return client;
 };
