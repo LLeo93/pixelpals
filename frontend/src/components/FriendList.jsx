@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { API_URL } from '../services/config';
+import { API_BASE_URL } from '../services/config';
 const FriendList = ({ userToken, username }) => {
   const [friendsData, setFriendsData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +19,7 @@ const FriendList = ({ userToken, username }) => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/auth/friends/status`, {
+      const response = await fetch(`${API_BASE_URL}/auth/friends/status`, {
         headers: {
           Authorization: `Bearer ${userToken}`,
           'Content-Type': 'application/json',
